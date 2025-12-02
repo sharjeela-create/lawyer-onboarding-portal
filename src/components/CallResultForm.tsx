@@ -435,7 +435,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
   const [carrierAttempted1, setCarrierAttempted1] = useState("");
   const [carrierAttempted2, setCarrierAttempted2] = useState("");
   const [carrierAttempted3, setCarrierAttempted3] = useState("");
-  const [showAppFixForm, setShowAppFixForm] = useState(false);
   
   // Accident-related fields
   const [accidentDate, setAccidentDate] = useState<Date>();
@@ -1318,7 +1317,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
                 variant={applicationSubmitted === true ? "default" : "outline"}
                 onClick={() => {
                   setApplicationSubmitted(true);
-                  setShowAppFixForm(false);
                 }}
                 className="flex items-center gap-2"
               >
@@ -1330,31 +1328,17 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
                 variant={applicationSubmitted === false ? "default" : "outline"}
                 onClick={() => {
                   setApplicationSubmitted(false);
-                  setShowAppFixForm(false);
                 }}
                 className="flex items-center gap-2"
               >
                 <XCircle className="h-4 w-4" />
                 No
               </Button>
-              <Button
-                type="button"
-                variant={showAppFixForm ? "default" : "outline"}
-                onClick={() => {
-                  setShowAppFixForm(true);
-                  setApplicationSubmitted(null);
-                }}
-                className="flex items-center gap-2 border-blue-500 text-blue-600 hover:bg-blue-50"
-              >
-                <Wrench className="h-4 w-4" />
-                App Fix
-              </Button>
             </div>
           </div>
 
-          {/* Call Source Dropdown - REQUIRED - Hidden when App Fix is shown */}
-          {!showAppFixForm && (
-            <div>
+          {/* Call Source Dropdown - REQUIRED */}
+          <div>
               <Label htmlFor="callSource" className="text-base font-semibold">
                 Call Source <span className="text-red-500">*</span>
               </Label>
@@ -1371,7 +1355,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
                 <p className="text-sm text-red-500 mt-1">Call source is required</p>
               )}
             </div>
-          )}
+          
           {/* Fields for submitted applications */}
           {showSubmittedFields && (
             <>
@@ -1904,9 +1888,8 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
             </div>
           )}
 
-          {/* Save Button - Hidden when App Fix is shown */}
-          {!showAppFixForm && (
-            <div className="flex justify-end">
+          {/* Save Button */}
+          <div className="flex justify-end">
               <Button 
                 type="submit" 
                 disabled={
@@ -1932,26 +1915,9 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
                 )}
               </Button>
             </div>
-          )}
-        </form>
+          </form>
       </CardContent>
     </Card>
-
-    {/* App Fix Task Type Selector Inline */}
-    {showAppFixForm && (
-      <AppFixTaskTypeSelector
-        submissionId={submissionId}
-        customerName={customerName}
-        onClose={() => setShowAppFixForm(false)}
-        onSuccess={() => {
-          toast({
-            title: "App Fix Task Created",
-            description: "The task has been assigned to a licensed agent",
-          });
-          setShowAppFixForm(false);
-        }}
-      />
-    )}
     </>
   );
 };

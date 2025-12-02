@@ -35,6 +35,7 @@ const Dashboard = () => {
   const [leads, setLeads] = useState<LeadWithCallResult[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<LeadWithCallResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
   // Track which lead cards are expanded (show accident details)
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const [dateFilter, setDateFilter] = useState('');
@@ -86,18 +87,22 @@ const Dashboard = () => {
     setCurrentPage(1); // Reset to first page when filters change
   }, [leads, dateFilter, statusFilter]);
 
-  // Separate effect for name filter to trigger search
+  // Debounced search effect - wait 500ms after user stops typing
   useEffect(() => {
-    if (nameFilter.trim()) {
-      // When searching, fetch from server with search term
-      setIsLoading(true);
-      fetchLeads(nameFilter.trim());
-    } else {
-      // When clearing search, fetch all recent leads
-      setIsLoading(true);
-      fetchLeads();
-    }
-    setCurrentPage(1); // Reset to first page when search changes
+    const timeoutId = setTimeout(() => {
+      if (nameFilter.trim()) {
+        // When searching, fetch from server with search term
+        setIsSearching(true);
+        fetchLeads(nameFilter.trim()).finally(() => setIsSearching(false));
+      } else if (nameFilter === '' && leads.length > 0) {
+        // When clearing search, fetch all recent leads only if we have data
+        setIsSearching(true);
+        fetchLeads().finally(() => setIsSearching(false));
+      }
+      setCurrentPage(1); // Reset to first page when search changes
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => clearTimeout(timeoutId);
   }, [nameFilter]);
 
   const fetchLeads = async (searchTerm?: string) => {
@@ -112,9 +117,11 @@ const Dashboard = () => {
       if (searchTerm && searchTerm.trim()) {
         const searchValue = `%${searchTerm.trim()}%`;
         query = query.or(`customer_full_name.ilike.${searchValue},submission_id.ilike.${searchValue},phone_number.ilike.${searchValue},email.ilike.${searchValue}`);
+        // Limit search results to 1000 for better performance
+        query = query.limit(1000);
       } else {
-        // For non-search loads, limit to recent records
-        query = query.range(0, 4999);
+        // For non-search loads, limit to recent 2000 records for faster loading
+        query = query.limit(2000);
       }
 
       const { data: leadsData, error: leadsError } = await query;
@@ -525,12 +532,23 @@ const Dashboard = () => {
   const paginatedLeads = getPaginatedLeads();
   const totalPages = getTotalPages();
 
-  if (loading || isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-2 text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading && leads.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading leads...</p>
         </div>
       </div>
     );
@@ -578,13 +596,30 @@ const Dashboard = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="name-filter">Search Leads</Label>
-                <Input
-                  id="name-filter"
-                  type="text"
-                  placeholder="Search by name, phone, submission ID, email, carrier, or agent..."
-                  value={nameFilter}
-                  onChange={(e) => setNameFilter(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="name-filter"
+                    type="text"
+                    placeholder="Search by name, phone, submission ID, or email..."
+                    value={nameFilter}
+                    onChange={(e) => setNameFilter(e.target.value)}
+                    className="pr-10"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {isSearching ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    ) : nameFilter ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setNameFilter('')}
+                        className="h-6 w-6 p-0 hover:bg-transparent"
+                      >
+                        <span className="text-muted-foreground hover:text-foreground">✕</span>
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -682,9 +717,7 @@ const Dashboard = () => {
                               <div>
                                 <span className="font-medium">DOB / Age:</span> {lead.date_of_birth ? format(new Date(lead.date_of_birth), 'MMM dd, yyyy') : 'N/A'}{lead.age ? ` (${lead.age})` : ''}
                               </div>
-                              <div>
-                                <span className="font-medium">Driver License:</span> {lead.driver_license || 'N/A'}
-                              </div>
+                      
                             </div>
 
                             {/* Accident / Incident Details (collapsible) */}
