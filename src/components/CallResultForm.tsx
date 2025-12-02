@@ -25,16 +25,12 @@ interface CallResultFormProps {
 }
 
 const statusOptions = [
-  "Needs callback",
-  "Not Interested",
-  "⁠DQ",
-  "Chargeback DQ",
-  "Future Submission Date",
-  "Updated Banking/draft date",
-  "Fulfilled carrier requirements",
-  "Call Never Sent",
-  "Disconnected",
-  "GI - Currently DQ"
+  "Incomplete Transfer",
+  "Returned To Center - DQ",
+  "Previously Sold BPO",
+  "Needs BPO Callback",
+  "Application Withdrawn",
+  "Pending Information"
 ];
 
 const carrierOptions = [
@@ -103,54 +99,56 @@ const licensedAccountOptions = [
 ];
 
 const leadVendorOptions = [
-"Ark Tech",
-"GrowthOnics BPO",
-"Maverick",
-"Omnitalk BPO",
-"Vize BPO",
-"Corebiz",
-"Digicon",
-"Ambition",
-"Benchmark",
-"Poshenee",
-"Plexi",
-"Gigabite",
-"Everline solution",
-"Progressive BPO",
-"Cerberus BPO",
-"NanoTech",
-"Optimum BPO",
-"Ethos BPO",
-"Trust Link",
-"Crown Connect BPO",
-"Quotes BPO",
-"Zupax Marketing",
-"Argon Comm",
-"Care Solutions",
-"Cutting Edge",
-"Next Era",
-"Rock BPO",
-"Avenue Consultancy",
-"AJ BPO",
-"Pro Solutions BPO",
-"Emperor BPO",
-"Networkize",
-"LightVerse BPO",
-"Leads BPO",
-"Helix BPO",
-"CrossNotch",
-"StratiX BPO",
-"Exito BPO",
-"Lumenix BPO",
-"All-Star BPO",
-"DownTown BPO",
-"TechPlanet",
-"Livik BPO",
-"NexGen BPO",
-"Quoted-Leads BPO",
-"SellerZ BPO",
-"Venom BPO",
-"WinBPO"
+"Zupax Marketing"
+];
+
+const incompleteTransferReasonOptions = [
+  "Call Disconnected",
+  "Technical Issues",
+  "Customer Unavailable",
+  "Never Connected",
+  "Other"
+];
+
+const returnedToCenterDQReasonOptions = [
+  "Multiple Chargebacks",
+  "Not Cognitively Functional",
+  "Transferred Many Times Without Success",
+  "TCPA",
+  "Decline All Available Carriers",
+  "Already a DQ in our System",
+  "Other"
+];
+
+const previouslySoldBPOReasonOptions = [
+  "Already Has Active Policy",
+  "Recently Purchased Coverage",
+  "Duplicate Lead",
+  "Other"
+];
+
+const needsBPOCallbackReasonOptions = [
+  "Banking Information Invalid",
+  "Existing Policy - Draft Hasn't Passed",
+  "Need Additional Information",
+  "Customer Requested Callback",
+  "Other"
+];
+
+const applicationWithdrawnReasonOptions = [
+  "Customer Changed Mind",
+  "Found Better Rate",
+  "No Longer Interested",
+  "Financial Concerns",
+  "Other"
+];
+
+const pendingInformationReasonOptions = [
+  "Waiting on Documents",
+  "Pending Medical Records",
+  "Awaiting Customer Response",
+  "Additional Verification Needed",
+  "Other"
 ];
 
 const dqReasonOptions = [
@@ -192,7 +190,19 @@ const fulfilledCarrierReasonOptions = [
 
 const getReasonOptions = (status: string) => {
   switch (status) {
-    case "⁠DQ":
+    case "Incomplete Transfer":
+      return incompleteTransferReasonOptions;
+    case "Returned To Center - DQ":
+      return returnedToCenterDQReasonOptions;
+    case "Previously Sold BPO":
+      return previouslySoldBPOReasonOptions;
+    case "Needs BPO Callback":
+      return needsBPOCallbackReasonOptions;
+    case "Application Withdrawn":
+      return applicationWithdrawnReasonOptions;
+    case "Pending Information":
+      return pendingInformationReasonOptions;
+    case "DQ":
     case "Chargeback DQ":
       return dqReasonOptions;
     case "Needs callback":
@@ -213,6 +223,14 @@ const getReasonOptions = (status: string) => {
 // Status mapping function for Daily Deal Flow sheet
 const mapStatusToSheetValue = (userSelectedStatus: string) => {
   const statusMap: { [key: string]: string } = {
+    // New statuses map to themselves
+    "Incomplete Transfer": "Incomplete Transfer",
+    "Returned To Center - DQ": "Returned To Center - DQ",
+    "Previously Sold BPO": "Previously Sold BPO",
+    "Needs BPO Callback": "Needs BPO Callback",
+    "Application Withdrawn": "Application Withdrawn",
+    "Pending Information": "Pending Information",
+    // Legacy mappings for backward compatibility
     "Needs callback": "Needs BPO Callback",
     "Call Never Sent": "Incomplete Transfer",
     "Not Interested": "Returned To Center - DQ",
@@ -230,7 +248,7 @@ const mapStatusToSheetValue = (userSelectedStatus: string) => {
 
 const getNoteText = (status: string, reason: string, clientName: string = "[Client Name]", newDraftDate?: Date) => {
   const statusReasonMapping: { [status: string]: { [reason: string]: string } } = {
-    "⁠DQ": {
+    "DQ": {
       "Multiple Chargebacks": `${clientName} has been DQ'd. They have caused multiple chargebacks in our agency, so we cannot submit another application for them`,
       "Not Cognatively Functional": `${clientName} has been DQ'd. They are not mentally able to make financial decisions. We cannot submit an application for them`,
       "Transferred Many Times Without Success": `We have spoken with ${clientName} more than 5 times and have not been able to successfully submit an application. We should move on from this caller`,
@@ -305,69 +323,91 @@ const checkExistingDailyDealFlowEntry = async (submissionId: string) => {
 
 // Function to generate structured notes for submitted applications
 const generateSubmittedApplicationNotes = (
-  licensedAgentAccount: string,
-  carrier: string,
-  productType: string,
-  monthlyPremium: string,
-  coverageAmount: string,
-  draftDate: Date | undefined,
-  sentToUnderwriting: boolean | null
+  accidentInfo?: {
+    accidentDate?: Date;
+    accidentLocation?: string;
+    accidentScenario?: string;
+    injuries?: string;
+    medicalAttention?: string;
+    policeAttended?: boolean | null;
+    insured?: boolean | null;
+    vehicleRegistration?: string;
+    insuranceCompany?: string;
+    thirdPartyVehicleRegistration?: string;
+    otherPartyAdmitFault?: boolean | null;
+    passengersCount?: string;
+    priorAttorneyInvolved?: boolean | null;
+    priorAttorneyDetails?: string;
+  }
 ) => {
   const parts = [];
 
-  // Licensed agent account (point 1)
-  if (licensedAgentAccount && licensedAgentAccount !== 'N/A') {
-    parts.push(`1. Licensed agent account: ${licensedAgentAccount}`);
+  // Add accident information if provided
+  if (accidentInfo) {
+    const accidentParts = [];
+    
+    if (accidentInfo.accidentDate) {
+      accidentParts.push(`Accident Date: ${accidentInfo.accidentDate.toLocaleDateString('en-US')}`);
+    }
+    
+    if (accidentInfo.accidentLocation) {
+      accidentParts.push(`Location: ${accidentInfo.accidentLocation}`);
+    }
+    
+    if (accidentInfo.accidentScenario) {
+      accidentParts.push(`Scenario: ${accidentInfo.accidentScenario}`);
+    }
+    
+    if (accidentInfo.injuries) {
+      accidentParts.push(`Injuries: ${accidentInfo.injuries}`);
+    }
+    
+    if (accidentInfo.medicalAttention) {
+      accidentParts.push(`Medical Attention: ${accidentInfo.medicalAttention}`);
+    }
+    
+    if (accidentInfo.policeAttended !== null) {
+      accidentParts.push(`Police Attended: ${accidentInfo.policeAttended ? 'Yes' : 'No'}`);
+    }
+    
+    if (accidentInfo.insured !== null) {
+      accidentParts.push(`Insured: ${accidentInfo.insured ? 'Yes' : 'No'}`);
+    }
+    
+    if (accidentInfo.vehicleRegistration) {
+      accidentParts.push(`Vehicle Registration: ${accidentInfo.vehicleRegistration}`);
+    }
+    
+    if (accidentInfo.insuranceCompany) {
+      accidentParts.push(`Insurance Company: ${accidentInfo.insuranceCompany}`);
+    }
+    
+    if (accidentInfo.thirdPartyVehicleRegistration) {
+      accidentParts.push(`Third Party Vehicle: ${accidentInfo.thirdPartyVehicleRegistration}`);
+    }
+    
+    if (accidentInfo.otherPartyAdmitFault !== null) {
+      accidentParts.push(`Other Party Admitted Fault: ${accidentInfo.otherPartyAdmitFault ? 'Yes' : 'No'}`);
+    }
+    
+    if (accidentInfo.passengersCount) {
+      accidentParts.push(`Passengers: ${accidentInfo.passengersCount}`);
+    }
+    
+    if (accidentInfo.priorAttorneyInvolved !== null) {
+      accidentParts.push(`Prior Attorney Involved: ${accidentInfo.priorAttorneyInvolved ? 'Yes' : 'No'}`);
+    }
+    
+    if (accidentInfo.priorAttorneyDetails) {
+      accidentParts.push(`Attorney Details: ${accidentInfo.priorAttorneyDetails}`);
+    }
+    
+    if (accidentParts.length > 0) {
+      parts.push(`Accident/Incident Information:\n   ${accidentParts.join('\n   ')}`);
+    }
   }
 
-  // Carrier (point 2)
-  if (carrier && carrier !== 'N/A') {
-    parts.push(`2. Carrier: ${carrier}`);
-  }
-
-  // Carrier product name and level (point 3)
-  if (productType && productType !== 'N/A') {
-    parts.push(`3. Carrier product name and level: ${productType}`);
-  }
-
-  // Premium amount (point 4)
-  if (monthlyPremium && monthlyPremium !== '0' && monthlyPremium !== '') {
-    parts.push(`4. Premium amount: $${monthlyPremium}`);
-  }
-
-  // Coverage amount (point 5)
-  if (coverageAmount && coverageAmount !== '0' && coverageAmount !== '') {
-    parts.push(`5. Coverage amount: $${coverageAmount}`);
-  }
-
-  // Draft date (point 6)
-  if (draftDate) {
-    parts.push(`6. Draft date: ${draftDate.toLocaleDateString('en-US', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric'
-    })}`);
-  }
-
-  // Sent to Underwriting (only if sentToUnderwriting is true) - point 7
-  if (sentToUnderwriting === true) {
-    parts.push('7. Sent to Underwriting');
-  }
-
-  // --- Carrier-specific commission rules as the final point ---
-  let commissionNote = "";
-  if (/aetna/i.test(carrier) || /corebridge/i.test(carrier)) {
-    commissionNote = "8. Commissions from this carrier are paid after the first successful draft";
-  } else if (/cica/i.test(carrier)) {
-    commissionNote = "8. Commissions from this carrier are paid 10-14 days after first successful draft";
-  } else {
-    commissionNote = "8. Commissions are paid after policy is officially approved and issued";
-  }
-
-  // Add commission note at the bottom
-  parts.push(commissionNote);
-
-  return parts.join('\n');
+  return parts.length > 0 ? parts.join('\n') : '';
 };
 
 // Function to combine structured notes with additional user notes
@@ -385,15 +425,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
   const [status, setStatus] = useState("");
   const [statusReason, setStatusReason] = useState("");
   const [notes, setNotes] = useState("");
-  const [carrier, setCarrier] = useState("");
-  const [productType, setProductType] = useState("");
-  const [draftDate, setDraftDate] = useState<Date>();
-  const [submittingAgent, setSubmittingAgent] = useState("");
-  const [licensedAgentAccount, setLicensedAgentAccount] = useState("");
-  const [coverageAmount, setCoverageAmount] = useState("");
-  const [monthlyPremium, setMonthlyPremium] = useState("");
-  const [submissionDate, setSubmissionDate] = useState<Date>();
-  const [sentToUnderwriting, setSentToUnderwriting] = useState<boolean | null>(null);
   const [bufferAgent, setBufferAgent] = useState("");
   const [agentWhoTookCall, setAgentWhoTookCall] = useState("");
   const [leadVendor, setLeadVendor] = useState("");
@@ -405,6 +436,22 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
   const [carrierAttempted2, setCarrierAttempted2] = useState("");
   const [carrierAttempted3, setCarrierAttempted3] = useState("");
   const [showAppFixForm, setShowAppFixForm] = useState(false);
+  
+  // Accident-related fields
+  const [accidentDate, setAccidentDate] = useState<Date>();
+  const [priorAttorneyInvolved, setPriorAttorneyInvolved] = useState<boolean | null>(null);
+  const [priorAttorneyDetails, setPriorAttorneyDetails] = useState("");
+  const [medicalAttention, setMedicalAttention] = useState("");
+  const [policeAttended, setPoliceAttended] = useState<boolean | null>(null);
+  const [accidentLocation, setAccidentLocation] = useState("");
+  const [accidentScenario, setAccidentScenario] = useState("");
+  const [insured, setInsured] = useState<boolean | null>(null);
+  const [injuries, setInjuries] = useState("");
+  const [vehicleRegistration, setVehicleRegistration] = useState("");
+  const [insuranceCompany, setInsuranceCompany] = useState("");
+  const [thirdPartyVehicleRegistration, setThirdPartyVehicleRegistration] = useState("");
+  const [otherPartyAdmitFault, setOtherPartyAdmitFault] = useState<boolean | null>(null);
+  const [passengersCount, setPassengersCount] = useState("");
   
   const { toast } = useToast();
 
@@ -428,19 +475,26 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
           setApplicationSubmitted(Boolean(existingResult.application_submitted));
           setStatus(existingResult.status || '');
           setNotes(existingResult.notes || '');
-          setCarrier(existingResult.carrier || '');
-          setProductType(existingResult.product_type || '');
-          setDraftDate(existingResult.draft_date ? new Date(existingResult.draft_date) : undefined);
-          setSubmittingAgent(existingResult.submitting_agent || '');
-          setLicensedAgentAccount(existingResult.licensed_agent_account || '');
-          setCoverageAmount(existingResult.coverage_amount ? existingResult.coverage_amount.toString() : '');
-          setMonthlyPremium(existingResult.monthly_premium ? existingResult.monthly_premium.toString() : '');
-          setSubmissionDate(existingResult.submission_date ? new Date(existingResult.submission_date) : undefined);
-          setSentToUnderwriting(Boolean(existingResult.sent_to_underwriting));
           setBufferAgent(existingResult.buffer_agent || '');
           setAgentWhoTookCall(existingResult.agent_who_took_call || '');
           setCallSource(existingResult.call_source || '');
           setIsRetentionCall(Boolean(existingResult.is_retention_call));
+          
+          // Load accident-related fields
+          setAccidentDate(existingResult.accident_date ? new Date(existingResult.accident_date) : undefined);
+          setPriorAttorneyInvolved(existingResult.prior_attorney_involved !== null ? Boolean(existingResult.prior_attorney_involved) : null);
+          setPriorAttorneyDetails(existingResult.prior_attorney_details || '');
+          setMedicalAttention(existingResult.medical_attention || '');
+          setPoliceAttended(existingResult.police_attended !== null ? Boolean(existingResult.police_attended) : null);
+          setAccidentLocation(existingResult.accident_location || '');
+          setAccidentScenario(existingResult.accident_scenario || '');
+          setInsured(existingResult.insured !== null ? Boolean(existingResult.insured) : null);
+          setInjuries(existingResult.injuries || '');
+          setVehicleRegistration(existingResult.vehicle_registration || '');
+          setInsuranceCompany(existingResult.insurance_company || '');
+          setThirdPartyVehicleRegistration(existingResult.third_party_vehicle_registration || '');
+          setOtherPartyAdmitFault(existingResult.other_party_admit_fault !== null ? Boolean(existingResult.other_party_admit_fault) : null);
+          setPassengersCount(existingResult.passengers_count ? existingResult.passengers_count.toString() : '');
           
           // Set status reason if it exists
           if (existingResult.dq_reason) {
@@ -454,11 +508,11 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
         } else {
           console.log('No existing call result found for submission:', submissionId);
           
-          // If no call result exists, fetch retention flag from verification_sessions
+          // If no call result exists, try to autofill from verification items
           try {
             const { data: verificationSession } = await supabase
               .from('verification_sessions')
-              .select('buffer_agent_id, is_retention_call')
+              .select('id, buffer_agent_id, is_retention_call')
               .eq('submission_id', submissionId)
               .order('created_at', { ascending: false })
               .limit(1)
@@ -467,6 +521,67 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
             if (verificationSession) {
               console.log('Auto-populating retention flag from verification session:', verificationSession.is_retention_call);
               setIsRetentionCall(Boolean(verificationSession.is_retention_call));
+
+              // Fetch verified accident fields from verification items
+              const { data: verificationItems } = await supabase
+                .from('verification_items')
+                .select('field_name, verified_value, original_value')
+                .eq('session_id', verificationSession.id)
+                .in('field_category', ['accident', 'witness']);
+
+              if (verificationItems && verificationItems.length > 0) {
+                console.log('Auto-populating accident fields from verification items:', verificationItems.length);
+                
+                verificationItems.forEach(item => {
+                  const value = item.verified_value || item.original_value;
+                  if (!value || value === 'null' || value === 'undefined') return;
+
+                  switch (item.field_name) {
+                    case 'accident_date':
+                      setAccidentDate(new Date(value));
+                      break;
+                    case 'accident_location':
+                      setAccidentLocation(value);
+                      break;
+                    case 'accident_scenario':
+                      setAccidentScenario(value);
+                      break;
+                    case 'injuries':
+                      setInjuries(value);
+                      break;
+                    case 'medical_attention':
+                      setMedicalAttention(value);
+                      break;
+                    case 'police_attended':
+                      setPoliceAttended(value.toLowerCase() === 'true');
+                      break;
+                    case 'insured':
+                      setInsured(value.toLowerCase() === 'true');
+                      break;
+                    case 'vehicle_registration':
+                      setVehicleRegistration(value);
+                      break;
+                    case 'insurance_company':
+                      setInsuranceCompany(value);
+                      break;
+                    case 'third_party_vehicle_registration':
+                      setThirdPartyVehicleRegistration(value);
+                      break;
+                    case 'other_party_admit_fault':
+                      setOtherPartyAdmitFault(value.toLowerCase() === 'true');
+                      break;
+                    case 'passengers_count':
+                      setPassengersCount(value);
+                      break;
+                    case 'prior_attorney_involved':
+                      setPriorAttorneyInvolved(value.toLowerCase() === 'true');
+                      break;
+                    case 'prior_attorney_details':
+                      setPriorAttorneyDetails(value);
+                      break;
+                  }
+                });
+              }
 
               // Also fetch the buffer agent's display name
               if (verificationSession.buffer_agent_id) {
@@ -509,7 +624,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
         try {
           const { data: verificationSession } = await supabase
             .from('verification_sessions')
-            .select('is_retention_call, buffer_agent_id')
+            .select('id, is_retention_call, buffer_agent_id')
             .eq('submission_id', submissionId)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -518,6 +633,67 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
           if (verificationSession) {
             console.log('Auto-populating retention flag from verification session for new entry:', verificationSession.is_retention_call);
             setIsRetentionCall(Boolean(verificationSession.is_retention_call));
+
+            // Fetch verified accident fields from verification items
+            const { data: verificationItems } = await supabase
+              .from('verification_items')
+              .select('field_name, verified_value, original_value')
+              .eq('session_id', verificationSession.id)
+              .in('field_category', ['accident', 'witness']);
+
+            if (verificationItems && verificationItems.length > 0) {
+              console.log('Auto-populating accident fields from verification items (new entry):', verificationItems.length);
+              
+              verificationItems.forEach(item => {
+                const value = item.verified_value || item.original_value;
+                if (!value || value === 'null' || value === 'undefined') return;
+
+                switch (item.field_name) {
+                  case 'accident_date':
+                    setAccidentDate(new Date(value));
+                    break;
+                  case 'accident_location':
+                    setAccidentLocation(value);
+                    break;
+                  case 'accident_scenario':
+                    setAccidentScenario(value);
+                    break;
+                  case 'injuries':
+                    setInjuries(value);
+                    break;
+                  case 'medical_attention':
+                    setMedicalAttention(value);
+                    break;
+                  case 'police_attended':
+                    setPoliceAttended(value.toLowerCase() === 'true');
+                    break;
+                  case 'insured':
+                    setInsured(value.toLowerCase() === 'true');
+                    break;
+                  case 'vehicle_registration':
+                    setVehicleRegistration(value);
+                    break;
+                  case 'insurance_company':
+                    setInsuranceCompany(value);
+                    break;
+                  case 'third_party_vehicle_registration':
+                    setThirdPartyVehicleRegistration(value);
+                    break;
+                  case 'other_party_admit_fault':
+                    setOtherPartyAdmitFault(value.toLowerCase() === 'true');
+                    break;
+                  case 'passengers_count':
+                    setPassengersCount(value);
+                    break;
+                  case 'prior_attorney_involved':
+                    setPriorAttorneyInvolved(value.toLowerCase() === 'true');
+                    break;
+                  case 'prior_attorney_details':
+                    setPriorAttorneyDetails(value);
+                    break;
+                }
+              });
+            }
 
             // Also fetch the buffer agent's display name
             if (verificationSession.buffer_agent_id) {
@@ -593,10 +769,23 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
     }
   }, [status, carrierAttempted1, carrierAttempted2, carrierAttempted3, customerName]);
 
-  const showCarrierApplicationFields = status === "Needs Carrier Application";
   const showSubmittedFields = applicationSubmitted === true;
   const showNotSubmittedFields = applicationSubmitted === false;
-  const showStatusReasonDropdown = applicationSubmitted === false && ["⁠DQ", "Chargeback DQ", "Needs callback", "Not Interested", "Future Submission Date", "Updated Banking/draft date", "Fulfilled carrier requirements"].includes(status);
+  const showStatusReasonDropdown = applicationSubmitted === false && [
+    "Incomplete Transfer",
+    "Returned To Center - DQ",
+    "Previously Sold BPO",
+    "Needs BPO Callback",
+    "Application Withdrawn",
+    "Pending Information",
+    "⁠DQ",
+    "Chargeback DQ",
+    "Needs callback",
+    "Not Interested",
+    "Future Submission Date",
+    "Updated Banking/draft date",
+    "Fulfilled carrier requirements"
+  ].includes(status);
   const showNewDraftDateField = applicationSubmitted === false && status === "Updated Banking/draft date" && statusReason;
   const showCarrierAttemptedFields = applicationSubmitted === false && status === "GI - Currently DQ";
   const currentReasonOptions = getReasonOptions(status);
@@ -637,10 +826,10 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
     let finalSubmissionId = submissionId;
 
     try {
-      // Determine status based on underwriting field
+      // Determine status based on application submission
       let finalStatus = status;
       if (applicationSubmitted === true) {
-        finalStatus = sentToUnderwriting === true ? "Underwriting" : "Submitted";
+        finalStatus = "Submitted";
       }
 
       // Map status for sheet value
@@ -650,13 +839,22 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
       let finalNotes = notes;
       if (applicationSubmitted === true) {
         const structuredNotes = generateSubmittedApplicationNotes(
-          licensedAgentAccount,
-          carrier,
-          productType,
-          monthlyPremium,
-          coverageAmount,
-          draftDate,
-          sentToUnderwriting
+          {
+            accidentDate,
+            accidentLocation,
+            accidentScenario,
+            injuries,
+            medicalAttention,
+            policeAttended,
+            insured,
+            vehicleRegistration,
+            insuranceCompany,
+            thirdPartyVehicleRegistration,
+            otherPartyAdmitFault,
+            passengersCount,
+            priorAttorneyInvolved,
+            priorAttorneyDetails
+          }
         );
         finalNotes = combineNotes(structuredNotes, notes);
       }
@@ -665,28 +863,31 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
         submission_id: submissionId,
         application_submitted: applicationSubmitted,
         status: finalStatus,
-        notes,
+        notes: finalNotes,
         dq_reason: showStatusReasonDropdown ? statusReason : null,
         buffer_agent: bufferAgent,
         agent_who_took_call: agentWhoTookCall,
-        sent_to_underwriting: sentToUnderwriting,
         new_draft_date: status === "Updated Banking/draft date" && newDraftDate ? format(newDraftDate, "yyyy-MM-dd") : null,
         is_callback: submissionId.startsWith('CB') || submissionId.startsWith('CBB'), // Track if this is a callback based on submission ID
         is_retention_call: isRetentionCall,
         carrier_attempted_1: status === "GI - Currently DQ" ? carrierAttempted1 : null,
         carrier_attempted_2: status === "GI - Currently DQ" ? carrierAttempted2 : null,
         carrier_attempted_3: status === "GI - Currently DQ" ? carrierAttempted3 : null,
-        ...(showSubmittedFields || showCarrierApplicationFields ? {
-          carrier,
-          product_type: productType,
-          draft_date: draftDate ? format(draftDate, "yyyy-MM-dd") : null,
-          submitting_agent: submittingAgent,
-          licensed_agent_account: licensedAgentAccount,
-          coverage_amount: coverageAmount ? parseFloat(coverageAmount) : null,
-          monthly_premium: monthlyPremium ? parseFloat(monthlyPremium) : null,
-          face_amount: coverageAmount ? parseFloat(coverageAmount) : null, // Coverage Amount saves to face_amount
-          submission_date: submissionDate ? format(submissionDate, "yyyy-MM-dd") : null,
-        } : {}),
+        // Accident-related fields
+        accident_date: accidentDate ? format(accidentDate, "yyyy-MM-dd") : null,
+        prior_attorney_involved: priorAttorneyInvolved,
+        prior_attorney_details: priorAttorneyDetails || null,
+        medical_attention: medicalAttention || null,
+        police_attended: policeAttended,
+        accident_location: accidentLocation || null,
+        accident_scenario: accidentScenario || null,
+        insured: insured,
+        injuries: injuries || null,
+        vehicle_registration: vehicleRegistration || null,
+        insurance_company: insuranceCompany || null,
+        third_party_vehicle_registration: thirdPartyVehicleRegistration || null,
+        other_party_admit_fault: otherPartyAdmitFault,
+        passengers_count: passengersCount ? parseInt(passengersCount) : null,
         call_source: callSource
       };
 
@@ -715,15 +916,16 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
           .from("call_results")
           .insert({
             ...callResultData,
-            agent_id: user?.id
+            user_id: user?.id
           });
       }
 
       if (result.error) {
         console.error("Error saving call result:", result.error);
+        console.error("Call result data:", callResultData);
         toast({
           title: "Error",
-          description: "Failed to save call result",
+          description: `Failed to save call result: ${result.error.message || 'Unknown error'}`,
           variant: "destructive",
         });
         return;
@@ -734,36 +936,35 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
         const { customerName: leadCustomerName, leadVendor: leadVendorName } = await getLeadInfo(submissionId);
         
         // Determine which agent to log for
-        let loggedAgentId = agentWhoTookCall;
+        let loggedAgentId = user?.id; // Default to current logged-in user
         let loggedAgentType: 'buffer' | 'licensed' = 'licensed';
         let loggedAgentName = agentWhoTookCall;
         
         // If it's a buffer agent workflow, log for buffer agent
         if (bufferAgent && bufferAgent !== 'N/A') {
-          // Get buffer agent user_id from agent_status table
-          const { data: bufferAgentData } = await supabase
-            .from('agent_status')
+          // Get buffer agent user_id from profiles table by display name
+          const { data: bufferAgentProfile } = await supabase
+            .from('profiles')
             .select('user_id')
-            .eq('agent_type', 'buffer')
+            .eq('display_name', bufferAgent)
             .single();
           
-          if (bufferAgentData?.user_id) {
-            loggedAgentId = bufferAgentData.user_id;
+          if (bufferAgentProfile?.user_id) {
+            loggedAgentId = bufferAgentProfile.user_id;
             loggedAgentType = 'buffer';
             loggedAgentName = bufferAgent;
           }
-        } else if (licensedAgentAccount && licensedAgentAccount !== 'N/A') {
-          // For licensed agent, try to get the user_id
-          const { data: licensedAgentData } = await supabase
-            .from('agent_status')
+        } else if (agentWhoTookCall && agentWhoTookCall !== 'N/A') {
+          // Get licensed agent user_id from profiles table by display name
+          const { data: licensedAgentProfile } = await supabase
+            .from('profiles')
             .select('user_id')
-            .eq('agent_type', 'licensed')
+            .eq('display_name', agentWhoTookCall)
             .single();
           
-          if (licensedAgentData?.user_id) {
-            loggedAgentId = licensedAgentData.user_id;
-            loggedAgentType = 'licensed';
-            loggedAgentName = licensedAgentAccount;
+          if (licensedAgentProfile?.user_id) {
+            loggedAgentId = licensedAgentProfile.user_id;
+            loggedAgentName = agentWhoTookCall;
           }
         }
 
@@ -788,12 +989,8 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
             eventType,
             eventDetails: {
               status: finalStatus,
-              carrier: carrier || null,
-              monthly_premium: monthlyPremium ? parseFloat(monthlyPremium) : null,
-              coverage_amount: coverageAmount ? parseFloat(coverageAmount) : null,
               call_source: callSource,
               dq_reason: showStatusReasonDropdown ? statusReason : null,
-              sent_to_underwriting: sentToUnderwriting,
               notes: notes
             },
             isRetentionCall: isRetentionCall,
@@ -816,30 +1013,31 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
                 call_source: callSource,
                 buffer_agent: bufferAgent,
                 agent: agentWhoTookCall,
-                licensed_agent_account: licensedAgentAccount,
-                status: finalStatus, // Use finalStatus instead of mappedStatus
-                call_result: applicationSubmitted === true
-                  ? (sentToUnderwriting === true ? "Underwriting" : "Submitted")
-                  : "Not Submitted",
-                carrier: carrier || null,
-                product_type: productType || null,
-                draft_date: draftDate ? format(draftDate, "yyyy-MM-dd") : null,
-                monthly_premium: monthlyPremium ? parseFloat(monthlyPremium) : null,
-                face_amount: coverageAmount ? parseFloat(coverageAmount) : null,
+                status: finalStatus,
+                call_result: applicationSubmitted === true ? "Submitted" : "Not Submitted",
                 notes: finalNotes,
-                policy_number: null,
-                carrier_audit: null,
-                product_type_carrier: null,
-                level_or_gi: null,
                 from_callback: callSource === "Agent Callback",
-                is_callback: submissionId.startsWith('CB') || submissionId.startsWith('CBB'), // Track if this is a callback with CB or CBB prefix
+                is_callback: submissionId.startsWith('CB') || submissionId.startsWith('CBB'),
                 is_retention_call: isRetentionCall,
-                // Add the new parameters for proper status determination
                 application_submitted: applicationSubmitted,
-                sent_to_underwriting: sentToUnderwriting,
                 carrier_attempted_1: status === "GI - Currently DQ" ? carrierAttempted1 : null,
                 carrier_attempted_2: status === "GI - Currently DQ" ? carrierAttempted2 : null,
-                carrier_attempted_3: status === "GI - Currently DQ" ? carrierAttempted3 : null
+                carrier_attempted_3: status === "GI - Currently DQ" ? carrierAttempted3 : null,
+                // Accident-related fields
+                accident_date: accidentDate ? format(accidentDate, "yyyy-MM-dd") : null,
+                prior_attorney_involved: priorAttorneyInvolved,
+                prior_attorney_details: priorAttorneyDetails || null,
+                medical_attention: medicalAttention || null,
+                police_attended: policeAttended,
+                accident_location: accidentLocation || null,
+                accident_scenario: accidentScenario || null,
+                insured: insured,
+                injuries: injuries || null,
+                vehicle_registration: vehicleRegistration || null,
+                insurance_company: insuranceCompany || null,
+                third_party_vehicle_registration: thirdPartyVehicleRegistration || null,
+                other_party_admit_fault: otherPartyAdmitFault,
+                passengers_count: passengersCount ? parseInt(passengersCount) : null
               }
             });
 
@@ -871,142 +1069,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
         // Don't fail the entire process if session update fails
       }
 
-      // Update lead vendor in leads table if provided and application is submitted
-      if (applicationSubmitted === true && leadVendor) {
-        try {
-          const { error: leadUpdateError } = await supabase
-            .from("leads")
-            .update({ lead_vendor: leadVendor })
-            .eq("submission_id", submissionId);
-
-          if (leadUpdateError) {
-            console.error("Error updating lead vendor:", leadUpdateError);
-            // Don't fail the entire process if lead vendor update fails
-          } else {
-            console.log("Lead vendor updated successfully");
-          }
-        } catch (leadVendorError) {
-          console.error("Lead vendor update failed:", leadVendorError);
-          // Don't fail the entire process if lead vendor update fails
-        }
-      }
-
-      // Simplified Google Sheets update logic - works for both BPO Transfer and Agent Callback
-      try {
-        const todayDate = formatDateESTLocale();
-        // Fetch lead data for sheet functions
-        const { data: leadData, error: leadError } = await supabase
-          .from("leads")
-          .select("*")
-          .eq("submission_id", submissionId)
-          .single();
-
-        if (leadError || !leadData) {
-          console.error("Error fetching lead data:", leadError);
-        } else {
-          // Use the finalSubmissionId from the Edge function (which handles creating new entries or updating existing ones)
-          console.log(`DEBUG: Google Sheets - ${callSource}, finalSubmissionId:`, finalSubmissionId, 'original:', submissionId);
-
-          // Generate combined notes for Google Sheets
-          let finalNotesForSheets = notes;
-          if (applicationSubmitted === true) {
-            const structuredNotes = generateSubmittedApplicationNotes(
-              licensedAgentAccount,
-              carrier,
-              productType,
-              monthlyPremium,
-              coverageAmount,
-              draftDate,
-              sentToUnderwriting
-            );
-            finalNotesForSheets = combineNotes(structuredNotes, notes);
-          }
-
-          if (finalSubmissionId !== submissionId) {
-            // New entry was created - use the new callback submission ID
-            console.log(`DEBUG: Google Sheets - Creating new entry for submission ${submissionId} -> ${finalSubmissionId}`);
-
-            // Prepare lead data with new submission_id
-            const newEntryLeadData = {
-              ...leadData,
-              submission_id: finalSubmissionId,
-              submission_date: todayDate,
-              lead_vendor: leadData.lead_vendor || leadVendor || 'N/A'
-            };
-
-            // Prepare call result data
-            const newEntryCallResult = {
-              application_submitted: applicationSubmitted,
-              status: applicationSubmitted === true ? "Pending Approval" : mapStatusToSheetValue(finalStatus),
-              buffer_agent: bufferAgent || '',
-              agent_who_took_call: agentWhoTookCall || '',
-              licensed_agent_account: licensedAgentAccount || '',
-              carrier: carrier || '',
-              product_type: productType || '',
-              draft_date: draftDate ? format(draftDate, "yyyy-MM-dd") : null,
-              monthly_premium: monthlyPremium ? parseFloat(monthlyPremium) : null,
-              face_amount: coverageAmount ? parseFloat(coverageAmount) : null,
-              notes: finalNotesForSheets || '',
-              dq_reason: showStatusReasonDropdown ? statusReason : null,
-              sent_to_underwriting: sentToUnderwriting,
-              from_callback: callSource === "Agent Callback",
-              call_source: callSource,
-              carrier_attempted_1: status === "GI - Currently DQ" ? carrierAttempted1 : null,
-              carrier_attempted_2: status === "GI - Currently DQ" ? carrierAttempted2 : null,
-              carrier_attempted_3: status === "GI - Currently DQ" ? carrierAttempted3 : null
-            };
-
-            // Create new entry in Google Sheets
-            const { error: sheetsError } = await supabase.functions.invoke('create-new-callback-sheet', {
-              body: {
-                leadData: newEntryLeadData,
-                callResult: newEntryCallResult
-              }
-            });
-
-            if (sheetsError) {
-              console.error(`Error creating new Google Sheets entry for ${callSource}:`, sheetsError);
-            } else {
-              console.log(`New Google Sheets entry created successfully for submission ${finalSubmissionId}`);
-            }
-          } else {
-            // Update existing entry
-            console.log('DEBUG: Google Sheets - Updating existing entry');
-
-            const { error: sheetsError } = await supabase.functions.invoke('google-sheets-update', {
-              body: {
-                submissionId: submissionId,
-                callResult: {
-                  application_submitted: applicationSubmitted,
-                  status: applicationSubmitted === true ? "Pending Approval" : mapStatusToSheetValue(finalStatus),
-                  buffer_agent: bufferAgent,
-                  agent_who_took_call: agentWhoTookCall,
-                  licensed_agent_account: licensedAgentAccount,
-                  carrier: carrier,
-                  product_type: productType,
-                  draft_date: draftDate ? format(draftDate, "yyyy-MM-dd") : null,
-                  monthly_premium: monthlyPremium ? parseFloat(monthlyPremium) : null,
-                  face_amount: coverageAmount ? parseFloat(coverageAmount) : null,
-                  notes: finalNotesForSheets,
-                  dq_reason: showStatusReasonDropdown ? statusReason : null,
-                  sent_to_underwriting: sentToUnderwriting,
-                  from_callback: callSource === "Agent Callback",
-                  call_source: callSource,
-                  carrier_attempted_1: status === "GI - Currently DQ" ? carrierAttempted1 : null,
-                  carrier_attempted_2: status === "GI - Currently DQ" ? carrierAttempted2 : null,
-                  carrier_attempted_3: status === "GI - Currently DQ" ? carrierAttempted3 : null
-                }
-              }
-            });
-            
-            if (sheetsError) {
-              console.error("Error updating Google Sheets:", sheetsError);
-            }
-          }
-        }
-      } catch (sheetsError) {
-        console.error("Google Sheets operation failed:", sheetsError);
-      }
+      // Google Sheets updates have been removed - data is tracked in daily_deal_flow table only
 
       // Send Slack notification for submitted applications
       if (applicationSubmitted === true) {
@@ -1021,34 +1084,19 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
             .single();
 
           if (!leadError && leadData) {
-            // Generate combined notes for Slack notification
-            let finalNotes = notes;
-            if (applicationSubmitted === true) {
-              const structuredNotes = generateSubmittedApplicationNotes(
-                licensedAgentAccount,
-                carrier,
-                productType,
-                monthlyPremium,
-                coverageAmount,
-                draftDate,
-                sentToUnderwriting
-              );
-              finalNotes = combineNotes(structuredNotes, notes);
-            }
-
             const callResultForSlack = {
               application_submitted: applicationSubmitted,
               buffer_agent: bufferAgent,
               agent_who_took_call: agentWhoTookCall,
-              carrier: carrier,
-              product_type: productType,
-              draft_date: draftDate ? format(draftDate, "yyyy-MM-dd") : null,
-              monthly_premium: monthlyPremium ? parseFloat(monthlyPremium) : null,
-              face_amount: coverageAmount ? parseFloat(coverageAmount) : null, // Coverage Amount saves to face_amount
-              sent_to_underwriting: sentToUnderwriting,
               lead_vendor: leadData.lead_vendor || leadVendor || 'N/A',
               notes: finalNotes,
-              dq_reason: showStatusReasonDropdown ? statusReason : null
+              dq_reason: showStatusReasonDropdown ? statusReason : null,
+              ...(accidentDate && { accident_date: accidentDate }),
+              ...(accidentLocation && { accident_location: accidentLocation }),
+              ...(injuries && { injuries }),
+              ...(medicalAttention !== null && { medical_attention: medicalAttention }),
+              ...(policeAttended !== null && { police_attended: policeAttended }),
+              ...(insured !== null && { insured }),
             };
             
             
@@ -1095,7 +1143,19 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
               notes: notes,
               buffer_agent: bufferAgent,
               agent_who_took_call: agentWhoTookCall,
-              lead_vendor: leadData.lead_vendor || leadVendor || 'N/A'
+              lead_vendor: leadData.lead_vendor || leadVendor || 'N/A',
+              // Accident information
+              accident_date: accidentDate ? format(accidentDate, "yyyy-MM-dd") : null,
+              accident_location: accidentLocation || null,
+              accident_scenario: accidentScenario || null,
+              injuries: injuries || null,
+              medical_attention: medicalAttention || null,
+              police_attended: policeAttended,
+              insured: insured,
+              vehicle_registration: vehicleRegistration || null,
+              insurance_company: insuranceCompany || null,
+              prior_attorney_involved: priorAttorneyInvolved,
+              prior_attorney_details: priorAttorneyDetails || null
             };
             
             console.log("Sending center notification for not submitted application");
@@ -1177,67 +1237,8 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
         }
       }
 
-      // Send personal sales portal notification if there's a licensed agent
-      if (licensedAgentAccount && licensedAgentAccount !== 'N/A') {
-        try {
-          console.log('Posting notes to personal sales portal for:', licensedAgentAccount);
-
-          // Get verification items for the submission if they exist
-          // First, get the verification session, then get the verified items
-          const { data: verificationSession } = await supabase
-            .from('verification_sessions')
-            .select('id')
-            .eq('submission_id', submissionId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-          let verificationItems: any[] = [];
-          
-          if (verificationSession) {
-            const { data: items, error: verificationError } = await supabase
-              .from('verification_items')
-              .select('*')
-              .eq('session_id', verificationSession.id)
-              .eq('is_verified', true); // Only get verified items (with checkmarks)
-
-            if (verificationError) {
-              console.error("Error fetching verification items:", verificationError);
-            } else {
-              verificationItems = items || [];
-              console.log(`Found ${verificationItems.length} verified items for submission ${submissionId}`);
-            }
-          } else {
-            console.log('No verification session found for submission:', submissionId);
-          }
-
-          // Prepare call result data for the portal
-          const callResultData = {
-            submission_id: submissionId,
-            customer_full_name: customerName,
-            status: finalStatus,
-            status_reason: statusReason,
-            notes: finalNotes,
-            licensed_agent_account: licensedAgentAccount
-          };
-
-          const { data: portalResult, error: portalError } = await supabase.functions.invoke('personal-sales-portal-notification', {
-            body: {
-              callResultData,
-              verificationItems: verificationItems || []
-            }
-          });
-
-          if (portalError) {
-            console.error("Error sending personal sales portal notification:", portalError);
-          } else {
-            console.log("Personal sales portal notification sent successfully:", portalResult);
-          }
-        } catch (portalError) {
-          console.error("Personal sales portal notification failed:", portalError);
-          // Don't fail the entire process if portal notification fails
-        }
-      }
+      // Personal sales portal notification has been removed
+      // Previously checked for licensedAgentAccount but this field is no longer used
 
       toast({
         title: "Success",
@@ -1254,15 +1255,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
           setStatus("");
           setStatusReason("");
           setNotes("");
-          setCarrier("");
-          setProductType("");
-          setDraftDate(undefined);
-          setSubmittingAgent("");
-          setLicensedAgentAccount("");
-          setCoverageAmount("");
-          setMonthlyPremium("");
-          setSubmissionDate(undefined);
-          setSentToUnderwriting(null);
           setBufferAgent("");
           setAgentWhoTookCall("");
           setLeadVendor("");
@@ -1426,54 +1418,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="licensedAgentAccount">Licensed Agent Account</Label>
-                  <Select value={licensedAgentAccount} onValueChange={setLicensedAgentAccount}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select licensed account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {licensedAccountOptions.map((account) => (
-                        <SelectItem key={account} value={account}>
-                          {account}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="carrier">Carrier Name</Label>
-                  <Select value={carrier} onValueChange={setCarrier}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select carrier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {carrierOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="productType">Product Type</Label>
-                  <Select value={productType} onValueChange={setProductType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select product type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {productTypeOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
                   <Label htmlFor="leadVendor">Lead Vendor</Label>
                   <Select value={leadVendor} onValueChange={setLeadVendor}>
                     <SelectTrigger>
@@ -1488,88 +1432,224 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div>
-                  <Label>Draft Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !draftDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {draftDate ? format(draftDate, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={draftDate}
-                        onSelect={setDraftDate}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div>
-                  <Label htmlFor="monthlyPremium">Monthly Premium</Label>
-                  <Input
-                    id="monthlyPremium"
-                    type="number"
-                    step="0.01"
-                    value={monthlyPremium}
-                    onChange={(e) => setMonthlyPremium(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="coverageAmount">Coverage Amount</Label>
-                  <Input
-                    id="coverageAmount"
-                    type="number"
-                    value={coverageAmount}
-                    onChange={(e) => setCoverageAmount(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
               </div>
 
-              {/* Sent to Underwriting Question */}
-              <div className="space-y-3 mt-6">
-                <Label className="text-base font-semibold">
-                  Sent to Underwriting?
-                </Label>
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant={sentToUnderwriting === true ? "default" : "outline"}
-                    onClick={() => setSentToUnderwriting(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    Yes
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={sentToUnderwriting === false ? "default" : "outline"}
-                    onClick={() => setSentToUnderwriting(false)}
-                    className="flex items-center gap-2"
-                  >
-                    <XCircle className="h-4 w-4" />
-                    No
-                  </Button>
-                </div>
-                {sentToUnderwriting !== null && (
-                  <div className="text-sm text-muted-foreground mt-2">
-                    Call Result will be: <strong>{sentToUnderwriting ? "Underwriting" : "Submitted"}</strong>
+              {/* Accident/Incident Information Section */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-semibold text-green-800 mb-3">Accident/Incident Information (Optional)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Accident Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !accidentDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {accidentDate ? format(accidentDate, "PPP") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={accidentDate}
+                          onSelect={setAccidentDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
-                )}
+
+                  <div>
+                    <Label htmlFor="accidentLocation">Accident Location</Label>
+                    <Input
+                      id="accidentLocation"
+                      value={accidentLocation}
+                      onChange={(e) => setAccidentLocation(e.target.value)}
+                      placeholder="City, State or Address"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label htmlFor="accidentScenario">Accident Scenario</Label>
+                    <Textarea
+                      id="accidentScenario"
+                      value={accidentScenario}
+                      onChange={(e) => setAccidentScenario(e.target.value)}
+                      placeholder="Describe what happened..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label htmlFor="injuries">Injuries</Label>
+                    <Textarea
+                      id="injuries"
+                      value={injuries}
+                      onChange={(e) => setInjuries(e.target.value)}
+                      placeholder="Describe any injuries sustained..."
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label htmlFor="medicalAttention">Medical Attention</Label>
+                    <Textarea
+                      id="medicalAttention"
+                      value={medicalAttention}
+                      onChange={(e) => setMedicalAttention(e.target.value)}
+                      placeholder="Details about medical treatment received..."
+                      rows={2}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Police Attended</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={policeAttended === true ? "default" : "outline"}
+                        onClick={() => setPoliceAttended(true)}
+                        className="flex-1"
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={policeAttended === false ? "default" : "outline"}
+                        onClick={() => setPoliceAttended(false)}
+                        className="flex-1"
+                      >
+                        No
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Was Insured</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={insured === true ? "default" : "outline"}
+                        onClick={() => setInsured(true)}
+                        className="flex-1"
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={insured === false ? "default" : "outline"}
+                        onClick={() => setInsured(false)}
+                        className="flex-1"
+                      >
+                        No
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="vehicleRegistration">Vehicle Registration</Label>
+                    <Input
+                      id="vehicleRegistration"
+                      value={vehicleRegistration}
+                      onChange={(e) => setVehicleRegistration(e.target.value)}
+                      placeholder="License plate number"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="insuranceCompany">Insurance Company</Label>
+                    <Input
+                      id="insuranceCompany"
+                      value={insuranceCompany}
+                      onChange={(e) => setInsuranceCompany(e.target.value)}
+                      placeholder="Name of insurance company"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="thirdPartyVehicleRegistration">Third Party Vehicle Registration</Label>
+                    <Input
+                      id="thirdPartyVehicleRegistration"
+                      value={thirdPartyVehicleRegistration}
+                      onChange={(e) => setThirdPartyVehicleRegistration(e.target.value)}
+                      placeholder="Other vehicle's license plate"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Other Party Admitted Fault</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={otherPartyAdmitFault === true ? "default" : "outline"}
+                        onClick={() => setOtherPartyAdmitFault(true)}
+                        className="flex-1"
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={otherPartyAdmitFault === false ? "default" : "outline"}
+                        onClick={() => setOtherPartyAdmitFault(false)}
+                        className="flex-1"
+                      >
+                        No
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="passengersCount">Number of Passengers</Label>
+                    <Input
+                      id="passengersCount"
+                      type="number"
+                      min="0"
+                      value={passengersCount}
+                      onChange={(e) => setPassengersCount(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Prior Attorney Involved</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={priorAttorneyInvolved === true ? "default" : "outline"}
+                        onClick={() => setPriorAttorneyInvolved(true)}
+                        className="flex-1"
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={priorAttorneyInvolved === false ? "default" : "outline"}
+                        onClick={() => setPriorAttorneyInvolved(false)}
+                        className="flex-1"
+                      >
+                        No
+                      </Button>
+                    </div>
+                  </div>
+
+                  {priorAttorneyInvolved === true && (
+                    <div className="md:col-span-2">
+                      <Label htmlFor="priorAttorneyDetails">Attorney Details</Label>
+                      <Textarea
+                        id="priorAttorneyDetails"
+                        value={priorAttorneyDetails}
+                        onChange={(e) => setPriorAttorneyDetails(e.target.value)}
+                        placeholder="Name, firm, contact information..."
+                        rows={2}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Notes for Submitted Applications */}
@@ -1806,85 +1886,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess }: CallRe
                   <p className="text-sm text-red-500 mt-1">Notes are required</p>
                 )}
               </div>
-
-              {/* Additional fields for "Needs Carrier Application" */}
-              {showCarrierApplicationFields && (
-                <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
-                  <h4 className="font-semibold text-blue-800">Carrier Application Details</h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="carrierApp">Carrier</Label>
-                      <Select value={carrier} onValueChange={setCarrier}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select carrier" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {carrierOptions.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="productTypeApp">Product Type</Label>
-                      <Select value={productType} onValueChange={setProductType}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select product type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {productTypeOptions.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label>Submission Date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !submissionDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {submissionDate ? format(submissionDate, "PPP") : "Pick a date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={submissionDate}
-                            onSelect={setSubmissionDate}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="faceAmount">Face Amount</Label>
-                      <Input
-                        id="faceAmount"
-                        type="number"
-                        value={coverageAmount}
-                        onChange={(e) => setCoverageAmount(e.target.value)}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

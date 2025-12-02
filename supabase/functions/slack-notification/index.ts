@@ -17,34 +17,7 @@ serve(async (req)=>{
     }
     // Lead vendor to Slack channel mapping
     const leadVendorChannelMapping = {
-      "Ark Tech": "#orbit-team-ark-tech",
-      "GrowthOnics BPO": "#orbit-team-growthonics-bpo",
-      "Maverick": "#orbit-team-maverick-comm",
-      "Omnitalk BPO": "#orbit-team-omnitalk-bpo",
-      "Vize BPO": "#orbit-team-vize-bpo",
-      "Corebiz": "#orbit-team-corebiz-bpo",
-      "Digicon": "#orbit-team-digicon-bpo",
-      "Ambition": "#orbit-team-ambition-bpo",
-      "Benchmark": "#orbit-team-benchmark-bpo",
-      "Poshenee": "#orbit-team-poshenee-tech-bpo",
-      "Plexi": "#orbit-team-plexi-bpo",
-      "Gigabite": "#orbit-team-gigabite-bpo",
-      "Everline solution": "#orbit-team-everline-bpo",
-      "Progressive BPO": "#orbit-team-progressive-bpo",
-      "Cerberus BPO": "#orbit-team-cerberus-bpo",
-      "NanoTech": "#orbit-team-nanotech-bpo",
-      "Optimum BPO": "#orbit-team-optimum-bpo",
-      "Ethos BPO": "#orbit-team-ethos-bpo",
-      "Trust Link": "#orbit-team-trust-link",
-      "Quotes BPO": "#obit-team-quotes-bpo",
-      "Zupax Marketing": "#orbit-team-zupax-marketing",
-      "Argon Communications": "#orbit-team-argon-communications",
-      "Care Solutions": "#test-bpo",
-      "Cutting Edge": "#test-bpo",
-      "Next Era": "#test-bpo",
-      "Rock BPO": "#orbit-team-rock-bpo",
-      "Avenue Consultancy": "#orbit-team-avenue-consultancy",
-      "Crown Connect BPO": "#orbit-team-crown-connect-bpo"
+      "Zupax Marketing": "#crash-guard-team-zupax-marketing"
     };
     const isSubmittedApplication = callResult && callResult.application_submitted === true;
     let slackMessage;
@@ -57,9 +30,85 @@ serve(async (req)=>{
       }
       // Add status display text
       const statusDisplay = finalStatus === "Underwriting" ? "Sent to Underwriting" : finalStatus;
+      
+      // Build accident information section
+      const accidentBlocks = [];
+      if (callResult.accident_date || callResult.accident_location || callResult.injuries) {
+        const accidentDetails = [];
+        
+        if (callResult.accident_date) {
+          accidentDetails.push(`📅 *Date:* ${callResult.accident_date}`);
+        }
+        
+        if (callResult.accident_location) {
+          accidentDetails.push(`📍 *Location:* ${callResult.accident_location}`);
+        }
+        
+        if (callResult.accident_scenario) {
+          accidentDetails.push(`📝 *Scenario:* ${callResult.accident_scenario}`);
+        }
+        
+        if (callResult.injuries) {
+          accidentDetails.push(`🩹 *Injuries:* ${callResult.injuries}`);
+        }
+        
+        if (callResult.medical_attention) {
+          accidentDetails.push(`🏥 *Medical:* ${callResult.medical_attention}`);
+        }
+        
+        if (callResult.police_attended !== null && callResult.police_attended !== undefined) {
+          accidentDetails.push(`👮 *Police:* ${callResult.police_attended ? 'Yes' : 'No'}`);
+        }
+        
+        if (callResult.insured !== null && callResult.insured !== undefined) {
+          accidentDetails.push(`🛡️ *Insured:* ${callResult.insured ? 'Yes' : 'No'}`);
+        }
+        
+        if (callResult.vehicle_registration) {
+          accidentDetails.push(`🚗 *Vehicle Reg:* ${callResult.vehicle_registration}`);
+        }
+        
+        if (callResult.insurance_company) {
+          accidentDetails.push(`🏢 *Insurance:* ${callResult.insurance_company}`);
+        }
+        
+        if (callResult.third_party_vehicle_registration) {
+          accidentDetails.push(`🚙 *3rd Party Vehicle:* ${callResult.third_party_vehicle_registration}`);
+        }
+        
+        if (callResult.other_party_admit_fault !== null && callResult.other_party_admit_fault !== undefined) {
+          accidentDetails.push(`⚖️ *Other Party Fault:* ${callResult.other_party_admit_fault ? 'Yes' : 'No'}`);
+        }
+        
+        if (callResult.passengers_count) {
+          accidentDetails.push(`👥 *Passengers:* ${callResult.passengers_count}`);
+        }
+        
+        if (callResult.prior_attorney_involved !== null && callResult.prior_attorney_involved !== undefined) {
+          accidentDetails.push(`⚖️ *Attorney Involved:* ${callResult.prior_attorney_involved ? 'Yes' : 'No'}`);
+        }
+        
+        if (callResult.prior_attorney_details) {
+          accidentDetails.push(`📋 *Attorney Details:* ${callResult.prior_attorney_details}`);
+        }
+        
+        if (accidentDetails.length > 0) {
+          accidentBlocks.push({
+            type: 'divider'
+          });
+          accidentBlocks.push({
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `*🚗 Accident Information:*\n${accidentDetails.join('\n')}`
+            }
+          });
+        }
+      }
+      
       // Template for submitted applications
       slackMessage = {
-        channel: '#submission-portal',
+        channel: '#crash-guard-submission-portal',
         blocks: [
           {
             type: 'header',
@@ -70,10 +119,40 @@ serve(async (req)=>{
           },
           {
             type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `*${callResult.buffer_agent || 'N/A'}* - *${callResult.agent_who_took_call || 'N/A'}* - *${callResult.lead_vendor || 'N/A'}* - *${leadData.customer_full_name || 'N/A'}* - *${callResult.carrier || 'N/A'}* - *${callResult.product_type || 'N/A'}* - *${callResult.draft_date || 'N/A'}* - *$${callResult.monthly_premium || 'N/A'}* - *$${callResult.face_amount || 'N/A'}* - *${statusDisplay}*`
-            }
+            fields: [
+              {
+                type: 'mrkdwn',
+                text: `*Submission ID:*\n${submissionId || 'N/A'}`
+              },
+              {
+                type: 'mrkdwn',
+                text: `*Customer:*\n${leadData.customer_full_name || 'N/A'}`
+              }
+              
+            ]
+          },
+          
+          {
+            type: 'section',
+            fields: [
+              {
+                type: 'mrkdwn',
+                text: `*Status:*\n${statusDisplay}`
+              }
+            ]
+          },
+          ...accidentBlocks,
+          {
+            type: 'divider'
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: `🏢 *${callResult.lead_vendor || 'N/A'}* | 🔄 Buffer: *${callResult.buffer_agent || 'N/A'}* | 👤 Agent: *${callResult.agent_who_took_call || 'N/A'}*`
+              }
+            ]
           }
         ]
       };
@@ -82,7 +161,7 @@ serve(async (req)=>{
       console.log('Skipping notification - only submitted applications trigger Slack messages');
     }
     // Only send Slack message if we have one (for submitted applications)
-    let slackResult = {
+    let slackResult: any = {
       ok: false
     };
     if (slackMessage) {
@@ -115,12 +194,88 @@ serve(async (req)=>{
     console.log('Debug - callResult.lead_vendor:', callResult?.lead_vendor);
     // Send additional notification to lead vendor specific channel if application is submitted
     if (isSubmittedApplication && callResult.lead_vendor) {
-      const vendorChannel = leadVendorChannelMapping[callResult.lead_vendor];
+      const vendorChannel = leadVendorChannelMapping[callResult.lead_vendor as keyof typeof leadVendorChannelMapping];
       console.log(`Debug - Looking for vendor: "${callResult.lead_vendor}"`);
       console.log(`Debug - Found channel: ${vendorChannel}`);
       if (vendorChannel) {
         // Calculate status display for vendor message
         const sentToUnderwriting = callResult.sent_to_underwriting === true ? "Yes" : "No";
+        
+        // Build accident information section for vendor
+        const vendorAccidentBlocks = [];
+        if (callResult.accident_date || callResult.accident_location || callResult.injuries) {
+          const accidentDetails = [];
+          
+          if (callResult.accident_date) {
+            accidentDetails.push(`📅 *Date:* ${callResult.accident_date}`);
+          }
+          
+          if (callResult.accident_location) {
+            accidentDetails.push(`📍 *Location:* ${callResult.accident_location}`);
+          }
+          
+          if (callResult.accident_scenario) {
+            accidentDetails.push(`📝 *Scenario:* ${callResult.accident_scenario}`);
+          }
+          
+          if (callResult.injuries) {
+            accidentDetails.push(`🩹 *Injuries:* ${callResult.injuries}`);
+          }
+          
+          if (callResult.medical_attention) {
+            accidentDetails.push(`🏥 *Medical:* ${callResult.medical_attention}`);
+          }
+          
+          if (callResult.police_attended !== null && callResult.police_attended !== undefined) {
+            accidentDetails.push(`👮 *Police:* ${callResult.police_attended ? 'Yes' : 'No'}`);
+          }
+          
+          if (callResult.insured !== null && callResult.insured !== undefined) {
+            accidentDetails.push(`🛡️ *Insured:* ${callResult.insured ? 'Yes' : 'No'}`);
+          }
+          
+          if (callResult.vehicle_registration) {
+            accidentDetails.push(`🚗 *Vehicle Reg:* ${callResult.vehicle_registration}`);
+          }
+          
+          if (callResult.insurance_company) {
+            accidentDetails.push(`🏢 *Insurance:* ${callResult.insurance_company}`);
+          }
+          
+          if (callResult.third_party_vehicle_registration) {
+            accidentDetails.push(`🚙 *3rd Party Vehicle:* ${callResult.third_party_vehicle_registration}`);
+          }
+          
+          if (callResult.other_party_admit_fault !== null && callResult.other_party_admit_fault !== undefined) {
+            accidentDetails.push(`⚖️ *Other Party Fault:* ${callResult.other_party_admit_fault ? 'Yes' : 'No'}`);
+          }
+          
+          if (callResult.passengers_count) {
+            accidentDetails.push(`👥 *Passengers:* ${callResult.passengers_count}`);
+          }
+          
+          if (callResult.prior_attorney_involved !== null && callResult.prior_attorney_involved !== undefined) {
+            accidentDetails.push(`⚖️ *Attorney Involved:* ${callResult.prior_attorney_involved ? 'Yes' : 'No'}`);
+          }
+          
+          if (callResult.prior_attorney_details) {
+            accidentDetails.push(`📋 *Attorney Details:* ${callResult.prior_attorney_details}`);
+          }
+          
+          if (accidentDetails.length > 0) {
+            vendorAccidentBlocks.push({
+              type: 'divider'
+            });
+            vendorAccidentBlocks.push({
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: `*🚗 Accident Information:*\n${accidentDetails.join('\n')}`
+              }
+            });
+          }
+        }
+        
         const vendorSlackMessage = {
           channel: vendorChannel,
           blocks: [
@@ -133,11 +288,19 @@ serve(async (req)=>{
             },
             {
               type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: `*${leadData.customer_full_name || 'N/A'}*\n\nCarrier: ${callResult.carrier || 'N/A'}\nProduct Type: ${callResult.product_type || 'N/A'}\nDraft Date: ${callResult.draft_date || 'N/A'}\nMonthly Premium: $${callResult.monthly_premium || 'N/A'}\nCoverage Amount: $${callResult.face_amount || 'N/A'}\nSent to Underwriting: ${sentToUnderwriting}`
-              }
-            }
+              fields: [
+                {
+                  type: 'mrkdwn',
+                  text: `*Submission ID:*\n${submissionId || 'N/A'}`
+                },
+                {
+                  type: 'mrkdwn',
+                  text: `*Customer:*\n${leadData.customer_full_name || 'N/A'}`
+                }
+              ]
+            },
+            
+            ...vendorAccidentBlocks
           ]
         };
         try {
@@ -149,7 +312,7 @@ serve(async (req)=>{
             },
             body: JSON.stringify(vendorSlackMessage)
           });
-          const vendorSlackResult = await vendorSlackResponse.json();
+          const vendorSlackResult: any = await vendorSlackResponse.json();
           console.log(`Vendor Slack API Response for ${vendorChannel}:`, JSON.stringify(vendorSlackResult, null, 2));
           if (vendorSlackResult.ok) {
             console.log(`Vendor notification sent to ${vendorChannel} successfully`);
@@ -176,14 +339,14 @@ serve(async (req)=>{
       messageTs: slackResult?.ts,
       mainChannelSuccess: slackResult?.ok || false,
       vendorNotificationAttempted: isSubmittedApplication && !!callResult?.lead_vendor,
-      vendorChannel: isSubmittedApplication && callResult?.lead_vendor ? leadVendorChannelMapping[callResult.lead_vendor] : null
+      vendorChannel: isSubmittedApplication && callResult?.lead_vendor ? leadVendorChannelMapping[callResult.lead_vendor as keyof typeof leadVendorChannelMapping] : null
     }), {
       headers: {
         ...corsHeaders,
         'Content-Type': 'application/json'
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in slack-notification:', error);
     return new Response(JSON.stringify({
       error: error.message

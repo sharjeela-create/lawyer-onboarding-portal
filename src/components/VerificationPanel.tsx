@@ -1,53 +1,52 @@
 import { useState, useEffect } from "react";
-import { Copy } from "lucide-react";
+import { Copy, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { logCallUpdate, getLeadInfo } from "@/lib/callLogging";
-// Custom field order for display - matches DetailedLeadInfoCard sequence
+// Custom field order for display - matches actual leads table fields
 const customFieldOrder = [
-  "lead_vendor", // Lead Vendor: William G Moore
-  "customer_full_name", // Customer full name (combined with lead_vendor in display)
-  "street_address",
-  "beneficiary_information",
-  "billing_and_mailing_address_is_the_same",
-  "date_of_birth", // Address: 8700 NE 16th St
+  // Lead Source
+  "lead_vendor",
+  
+  // Personal Information
+  "customer_full_name",
+  "date_of_birth",
   "age",
-  "phone_number",
+  "birth_state",
   "social_security",
   "driver_license",
-  "exp", // Exp
-  "existing_coverage", // Existing coverage
-  "applied_to_life_insurance_last_two_years", // Applied to life insurance last two years
-  "height", // Height: 5.2
-  "weight", // Weight: 160
-  "doctors_name", // Doctors Name: Dr. Daniel Pham, MD
-  "tobacco_use", // Tobacco Use: NO
-  "health_conditions", // Health Conditions
-  "medications", // Medications
-  "insurance_application_details", // Insurance Application Details
-  "carrier", // Carrier: AMAM
-  "monthly_premium", // Monthly Premium: $63.37
-  "coverage_amount", // Coverage Amount: $5,000
-  "draft_date", // Draft Date: 8th of aug
-  "first_draft", // First Draft
-  "institution_name", // Bank Name: Bank of Oklahoma
-  "beneficiary_routing", // Routing Number: 103900036
-  "beneficiary_account", // Account Number: 103900036
-  "account_type",
-  "city", // Oklahoma City
-  "state", // OK
-  "zip_code", // 73110
-   // Beneficiary Information
-   // Billing and mailing address is the same: (Y/N)
-   // Date of Birth: 1948-05-26
-  "birth_state", // Birth State: NE
-   // Age: 77
-   // Number: (405) 423-4272
-  "call_phone_landline", // Call phone/landline
-   // Social: 447489617
-   // Driver License Number
-   // Checking/savings account
-  "additional_notes" // ADDITIONAL NOTES
+  
+  // Contact Information
+  "street_address",
+  "city",
+  "state",
+  "zip_code",
+  "phone_number",
+  "email",
+  
+  // Accident/Incident Information
+  "accident_date",
+  "accident_location",
+  "accident_scenario",
+  "injuries",
+  "medical_attention",
+  "police_attended",
+  "insured",
+  "vehicle_registration",
+  "insurance_company",
+  "third_party_vehicle_registration",
+  "other_party_admit_fault",
+  "passengers_count",
+  "prior_attorney_involved",
+  "prior_attorney_details",
+  
+  // Witness/Contact Information
+  "contact_name",
+  "contact_number",
+  "contact_address",
+  
+  // Additional Notes
+  "additional_notes"
 ];
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ColoredProgress } from "@/components/ui/colored-progress";
@@ -91,41 +90,44 @@ export const VerificationPanel = ({ sessionId, onTransferReady }: VerificationPa
       fieldValues[item.field_name] = inputValues[item.id] || item.original_value || 'N/A';
     });
 
-    // Format notes in the exact sequence from DetailedLeadInfoCard
+    // Format notes in the exact sequence from leads table
     const notesText = [
-      `lead_vendor:${fieldValues.lead_vendor || 'N/A'}`,
-      `customer_full_name:${fieldValues.customer_full_name || 'N/A'}`,
-      `Address: ${fieldValues.street_address || ''} ${fieldValues.city || ''}, ${fieldValues.state || ''} ${fieldValues.zip_code || ''}`,
-      `Beneficiary Information: ${fieldValues.beneficiary_information || 'N/A'}`,
-      `Billing and mailing address is the same: (Y/N)`,
+      `Lead Vendor: ${fieldValues.lead_vendor || 'N/A'}`,
+      `Customer Name: ${fieldValues.customer_full_name || 'N/A'}`,
+      ``,
+      `PERSONAL INFORMATION:`,
       `Date of Birth: ${fieldValues.date_of_birth || 'N/A'}`,
-      `Birth State: ${fieldValues.birth_state || 'N/A'}`,
       `Age: ${fieldValues.age || 'N/A'}`,
-      `Number: ${fieldValues.phone_number || 'N/A'}`,
-      `Call phone/landline: ${fieldValues.call_phone_landline || ''}`,
-      `Social: ${fieldValues.social_security || 'N/A'}`,
-      `Driver License Number: ${fieldValues.driver_license || ''}`,
-      `Exp: ${fieldValues.exp || ''}`,
-      `Existing coverage: ${fieldValues.existing_coverage || 'N/A'}`,
-      `Applied to life insurance last two years: ${fieldValues.applied_to_life_insurance_last_two_years || 'N/A'}`,
-      `Height: ${fieldValues.height || 'N/A'}`,
-      `Weight: ${fieldValues.weight || 'N/A'}`,
-      `Doctors Name: ${fieldValues.doctors_name || 'N/A'}`,
-      `Tobacco Use: ${fieldValues.tobacco_use || 'N/A'}`,
-      `Health Conditions:`,
-      `${fieldValues.health_conditions || 'N/A'}`,
-      `Medications:`,
-      `${fieldValues.medications || 'N/A'}`,
-      `Insurance Application Details:`,
-      `Carrier: ${fieldValues.carrier || 'N/A'}`,
-      `Monthly Premium: $${fieldValues.monthly_premium || 'N/A'}`,
-      `Coverage Amount: $${fieldValues.coverage_amount || 'N/A'}`,
-      `Draft Date: ${fieldValues.draft_date || 'N/A'}`,
-      `First Draft: ${fieldValues.first_draft || 'N/A'}`,
-      `Bank Name: ${fieldValues.institution_name || 'N/A'}`,
-      `Routing Number: ${fieldValues.beneficiary_routing || 'N/A'}`,
-      `Account Number: ${fieldValues.beneficiary_account || 'N/A'}`,
-      `Checking/savings account: ${fieldValues.account_type || ''}`,
+      `Birth State: ${fieldValues.birth_state || 'N/A'}`,
+      `Social Security: ${fieldValues.social_security || 'N/A'}`,
+      `Driver License: ${fieldValues.driver_license || 'N/A'}`,
+      ``,
+      `CONTACT INFORMATION:`,
+      `Address: ${fieldValues.street_address || ''} ${fieldValues.city || ''}, ${fieldValues.state || ''} ${fieldValues.zip_code || ''}`,
+      `Phone: ${fieldValues.phone_number || 'N/A'}`,
+      `Email: ${fieldValues.email || 'N/A'}`,
+      ``,
+      `ACCIDENT/INCIDENT INFORMATION:`,
+      `Accident Date: ${fieldValues.accident_date || 'N/A'}`,
+      `Accident Location: ${fieldValues.accident_location || 'N/A'}`,
+      `Accident Scenario: ${fieldValues.accident_scenario || 'N/A'}`,
+      `Injuries: ${fieldValues.injuries || 'N/A'}`,
+      `Medical Attention: ${fieldValues.medical_attention || 'N/A'}`,
+      `Police Attended: ${fieldValues.police_attended === 'true' ? 'Yes' : 'No'}`,
+      `Insured: ${fieldValues.insured === 'true' ? 'Yes' : 'No'}`,
+      `Vehicle Registration: ${fieldValues.vehicle_registration || 'N/A'}`,
+      `Insurance Company: ${fieldValues.insurance_company || 'N/A'}`,
+      `Third Party Vehicle Registration: ${fieldValues.third_party_vehicle_registration || 'N/A'}`,
+      `Other Party Admit Fault: ${fieldValues.other_party_admit_fault === 'true' ? 'Yes' : 'No'}`,
+      `Passengers Count: ${fieldValues.passengers_count || '0'}`,
+      `Prior Attorney Involved: ${fieldValues.prior_attorney_involved === 'true' ? 'Yes' : 'No'}`,
+      `Prior Attorney Details: ${fieldValues.prior_attorney_details || 'N/A'}`,
+      ``,
+      `WITNESS/CONTACT INFORMATION:`,
+      `Contact Name: ${fieldValues.contact_name || 'N/A'}`,
+      `Contact Number: ${fieldValues.contact_number || 'N/A'}`,
+      `Contact Address: ${fieldValues.contact_address || 'N/A'}`,
+      ``,
       `ADDITIONAL NOTES:`,
       `${fieldValues.additional_notes || 'N/A'}`
     ].join('\n');
@@ -309,28 +311,85 @@ export const VerificationPanel = ({ sessionId, onTransferReady }: VerificationPa
     ).join(' ');
   };
 
-  if (loading) {
-    return (
-      <Card className="h-full">
-        <CardContent className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-sm text-muted-foreground">Loading verification panel...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Determine field type
+  const getFieldType = (fieldName: string): 'boolean' | 'longText' | 'text' => {
+    // Boolean fields
+    const booleanFields = [
+      'police_attended',
+      'insured',
+      'other_party_admit_fault',
+      'prior_attorney_involved'
+    ];
+    
+    // Long text fields
+    const longTextFields = [
+      'accident_scenario',
+      'injuries',
+      'medical_attention',
+      'prior_attorney_details',
+      'additional_notes'
+    ];
+    
+    if (booleanFields.includes(fieldName)) return 'boolean';
+    if (longTextFields.includes(fieldName)) return 'longText';
+    return 'text';
+  };
 
-  if (!session) {
+  // Render field input based on type
+  const renderFieldInput = (item: VerificationItem) => {
+    const fieldType = getFieldType(item.field_name);
+    const value = inputValues[item.id] || '';
+
+    if (fieldType === 'boolean') {
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => handleFieldValueChange(item.id, 'true')}
+            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+              value === 'true'
+                ? 'border-green-500 bg-green-50 text-green-700'
+                : 'border-gray-200 hover:border-green-300 bg-white'
+            }`}
+          >
+            <Check className={`h-5 w-5 ${value === 'true' ? 'text-green-600' : 'text-gray-400'}`} />
+            <span className="font-medium">Yes</span>
+          </button>
+          <button
+            onClick={() => handleFieldValueChange(item.id, 'false')}
+            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+              value === 'false'
+                ? 'border-red-500 bg-red-50 text-red-700'
+                : 'border-gray-200 hover:border-red-300 bg-white'
+            }`}
+          >
+            <X className={`h-5 w-5 ${value === 'false' ? 'text-red-600' : 'text-gray-400'}`} />
+            <span className="font-medium">No</span>
+          </button>
+        </div>
+      );
+    }
+
+    if (fieldType === 'longText') {
+      return (
+        <Textarea
+          value={value}
+          onChange={(e) => handleFieldValueChange(item.id, e.target.value)}
+          placeholder={`Enter ${formatFieldName(item.field_name).toLowerCase()}`}
+          className="text-sm min-h-[100px] resize-y"
+          rows={4}
+        />
+      );
+    }
+
     return (
-      <Card className="h-full">
-        <CardContent className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Verification session not found</p>
-        </CardContent>
-      </Card>
+      <Input
+        value={value}
+        onChange={(e) => handleFieldValueChange(item.id, e.target.value)}
+        placeholder={`Enter ${formatFieldName(item.field_name).toLowerCase()}`}
+        className="text-xs"
+      />
     );
-  }
+  };
 
   return (
     <Card className="h-full flex flex-col">
@@ -408,12 +467,7 @@ export const VerificationPanel = ({ sessionId, onTransferReady }: VerificationPa
                 className="ml-auto"
               />
             </div>
-            <Input
-              value={inputValues[item.id] || ''}
-              onChange={(e) => handleFieldValueChange(item.id, e.target.value)}
-              placeholder={`Enter ${formatFieldName(item.field_name).toLowerCase()}`}
-              className="text-xs"
-            />
+            {renderFieldInput(item)}
             <Separator className="mt-4" />
           </div>
         ))}

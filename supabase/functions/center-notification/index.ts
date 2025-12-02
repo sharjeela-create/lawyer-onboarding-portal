@@ -1,15 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
+
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN');
-serve(async (req)=>{
+
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: corsHeaders
     });
   }
+
   try {
     const { submissionId, leadData, callResult } = await req.json();
     if (!SLACK_BOT_TOKEN) {
@@ -17,46 +21,7 @@ serve(async (req)=>{
     }
     // Center mapping for different lead vendors
     const leadVendorCenterMapping = {
-      "Ark Tech": "#orbit-team-ark-tech",
-      "GrowthOnics BPO": "#orbit-team-growthonics-bpo",
-      "Maverick": "#sample-center-transfer-channel",
-      "Omnitalk BPO": "#orbit-team-omnitalk-bpo",
-      "Vize BPO": "#orbit-team-vize-bpo",
-      "Corebiz": "#orbit-team-corebiz-bpo",
-      "Digicon": "#orbit-team-digicon-bpo",
-      "Ambition": "#orbit-team-ambition-bpo",
-      "AJ BPO": "#orbit-team-aj-bpo",
-      "Pro Solutions BPO": "#orbit-team-pro-solutions-bpo",
-      "Emperor BPO": "#orbit-team-emperor-bpo",
-      "Benchmark": "#orbit-team-benchmark-bpo",
-      "Poshenee": "#orbit-team-poshenee-tech-bpo",
-      "Plexi": "#orbit-team-plexi-bpo",
-      "Gigabite": "#orbit-team-gigabite-bpo",
-      "Everline solution": "#orbit-team-everline-bpo",
-      "Progressive BPO": "#orbit-team-progressive-bpo",
-      "Cerberus BPO": "#orbit-team-cerberus-bpo",
-      "NanoTech": "#orbit-team-nanotech-bpo",
-      "Optimum BPO": "#orbit-team-optimum-bpo",
-      "Ethos BPO": "#orbit-team-ethos-bpo",
-      "Trust Link": "#orbit-team-trust-link",
-      "Quotes BPO": "#obit-team-quotes-bpo",
-      "Zupax Marketing": "#orbit-team-zupax-marketing",
-      "Argon Comm": "#orbit-team-argon-comm",
-      "Care Solutions": "#unlimited-team-care-solutions",
-      "Cutting Edge": "#unlimited-team-cutting-edge",
-      "Next Era": "#unlimited-team-next-era",
-      "Rock BPO": "#orbit-team-rock-bpo",
-      "Avenue Consultancy": "#orbit-team-avenue-consultancy",
-      "Crown Connect BPO": "#orbit-team-crown-connect-bpo",
-      "Networkize": "#orbit-team-networkize",
-      "LightVerse BPO": "#orbit-team-lightverse-bpo",
-      "Leads BPO": "#orbit-team-leads-bpo",
-      "Helix BPO": "#orbit-team-helix-bpo",
-      "CrossNotch": "#orbit-team-crossnotch",
-      "TechPlanet": "#orbit-team-techplanet",
-      "Exito BPO": "#orbit-team-exito-bpo",
-      "StratiX BPO": "#orbit-team-stratix-bpo",
-      "Lumenix BPO": "#orbit-team-lumenix-bpo"
+      "Zupax Marketing": "#crash-guard-team-zupax-marketing"
     };
     // Send notifications for all call results (submitted or not)
     // No filtering - centers need to know about all outcomes
@@ -96,28 +61,36 @@ serve(async (req)=>{
     const customerName = leadData.customer_full_name || 'Unknown Customer';
     const phoneNumber = leadData.phone_number || 'No phone number';
     const email = leadData.email || 'No email';
-    // Format the message with status emoji
-    // Use trim() and normalize to handle invisible characters and whitespace
+
+    // Format the message with status emoji based on your dropdown options
+    // Dropdown options: Incomplete Transfer, Returned To Center - DQ, Previously Sold BPO, Needs BPO Callback, Application Withdrawn
     const normalizedStatus = (callResult.status || '').trim().normalize('NFKC');
     const normalizedReason = (callResult.dq_reason || '').trim().normalize('NFKC');
-    let statusEmoji = '✅';
-    // Use includes() for partial matching to handle variations and invisible characters
-    if (normalizedStatus.includes('DQ') || normalizedStatus === 'DQ' || normalizedReason.includes('Chargeback DQ')) {
-      statusEmoji = '🚫';
-    } else if (normalizedStatus.includes('callback') || normalizedStatus.includes('Callback')) {
-      statusEmoji = '📞';
-    } else if (normalizedStatus.includes('Not Interested') || normalizedStatus.includes('not interested')) {
-      statusEmoji = '🙅‍♂️';
-    } else if (normalizedStatus.includes('Future') || normalizedStatus.includes('future')) {
-      statusEmoji = '📅';
-    } else if (normalizedStatus.includes('Submitted') || normalizedStatus.includes('submitted')) {
-      statusEmoji = '✅';
-    } else if (normalizedStatus.includes('Fulfilled carrier requirements') || normalizedStatus.includes('fulfilled carrier requirements')) {
-      statusEmoji = '✅';
-    } else {
-      // Default for unknown statuses
+    
+    let statusEmoji = '📋'; // Default
+
+    // Map statuses to emojis based on your dropdown options
+    if (normalizedStatus.includes('Incomplete Transfer')) {
       statusEmoji = '⚠️';
+    } else if (normalizedStatus.includes('Returned To Center - DQ') || normalizedStatus.includes('DQ')) {
+      statusEmoji = '🚫';
+    } else if (normalizedStatus.includes('Previously Sold BPO')) {
+      statusEmoji = '✅';
+    } else if (normalizedStatus.includes('Needs BPO Callback') || normalizedStatus.includes('callback') || normalizedStatus.includes('Callback')) {
+      statusEmoji = '📞';
+    } else if (normalizedStatus.includes('Application Withdrawn')) {
+      statusEmoji = '📅';
+    } else if (normalizedStatus.includes('Not Interested')) {
+      statusEmoji = '🙅‍♂️';
+    } else if (normalizedStatus.includes('Disconnected')) {
+      statusEmoji = '📵';
     }
+
+    // NOTE: Accident information is NOT included in center notifications
+    // because this function is only called for NOT submitted applications.
+    // Accident details are only relevant for submitted applications and are
+    // sent via the slack-notification function instead.
+    
     const centerSlackMessage = {
       channel: centerChannel,
       blocks: [
@@ -125,15 +98,21 @@ serve(async (req)=>{
           type: 'header',
           text: {
             type: 'plain_text',
-            text: `${statusEmoji} - ${statusText}`
+            text: `${statusEmoji} ${statusText}`
           }
         },
         {
           type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `*Customer Name:* ${customerName}`
-          }
+          fields: [
+            {
+              type: 'mrkdwn',
+              text: `*Submission ID:*\n${submissionId}`
+            },
+            {
+              type: 'mrkdwn',
+              text: `*Customer:*\n${customerName}`
+            }
+          ]
         },
         {
           type: 'section',
@@ -150,11 +129,14 @@ serve(async (req)=>{
           }
         },
         {
+          type: 'divider'
+        },
+        {
           type: 'context',
           elements: [
             {
               type: 'mrkdwn',
-              text: `Lead Vendor: ${leadVendor} | Agent: ${callResult.agent_who_took_call || 'N/A'} | Buffer: ${callResult.buffer_agent || 'N/A'}`
+              text: `🏢 Vendor: *${leadVendor}* | 👤 Agent: *${callResult.agent_who_took_call || 'N/A'}* | 🔄 Buffer: *${callResult.buffer_agent || 'N/A'}*`
             }
           ]
         }

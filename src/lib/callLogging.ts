@@ -30,16 +30,9 @@ export const logCallUpdate = async (event: CallLogEvent): Promise<string | null>
       p_verification_session_id: event.verificationSessionId || null,
       p_call_result_id: event.callResultId || null,
       p_customer_name: event.customerName || null,
-      p_lead_vendor: event.leadVendor || null
+      p_lead_vendor: event.leadVendor || null,
+      p_is_retention_call: event.isRetentionCall || false
     });
-
-    // After RPC call, update is_retention_call if provided
-    if (data && event.isRetentionCall !== undefined) {
-      await supabase
-        .from('call_update_logs')
-        .update({ is_retention_call: event.isRetentionCall })
-        .eq('id', data);
-    }
 
     if (error) {
       console.error('Error logging call update:', error);

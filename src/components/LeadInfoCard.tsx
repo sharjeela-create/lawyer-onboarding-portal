@@ -15,13 +15,26 @@ interface Lead {
   zip_code: string;
   date_of_birth: string;
   age: number;
-  carrier: string;
-  product_type: string;
-  coverage_amount: number;
-  monthly_premium: number;
-  draft_date: string;
   additional_notes: string;
-  beneficiary_information: string;
+  lead_vendor?: string;
+  // Accident/Incident fields
+  accident_date?: string;
+  accident_location?: string;
+  accident_scenario?: string;
+  injuries?: string;
+  medical_attention?: string;
+  police_attended?: boolean;
+  insured?: boolean;
+  vehicle_registration?: string;
+  insurance_company?: string;
+  third_party_vehicle_registration?: string;
+  other_party_admit_fault?: boolean;
+  passengers_count?: number;
+  prior_attorney_involved?: boolean;
+  prior_attorney_details?: string;
+  contact_name?: string;
+  contact_number?: string;
+  contact_address?: string;
 }
 
 interface LeadInfoCardProps {
@@ -38,14 +51,30 @@ Name: ${lead.customer_full_name}
 Phone: ${lead.phone_number}
 Email: ${lead.email}
 Address: ${lead.street_address}, ${lead.city}, ${lead.state} ${lead.zip_code}
-Beneficiary Information: ${lead.beneficiary_information || ''}
 Date of Birth: ${lead.date_of_birth}
 Age: ${lead.age}
-Carrier: ${lead.carrier}
-Product Type: ${lead.product_type}
-Coverage Amount: $${lead.coverage_amount?.toLocaleString()}
-Monthly Premium: $${lead.monthly_premium}
-Draft Date: ${lead.draft_date}
+
+Accident/Incident Information:
+Accident Date: ${lead.accident_date || 'N/A'}
+Accident Location: ${lead.accident_location || 'N/A'}
+Accident Scenario: ${lead.accident_scenario || 'N/A'}
+Injuries: ${lead.injuries || 'N/A'}
+Medical Attention: ${lead.medical_attention || 'N/A'}
+Police Attended: ${lead.police_attended ? 'Yes' : 'No'}
+Insured: ${lead.insured ? 'Yes' : 'No'}
+Vehicle Registration: ${lead.vehicle_registration || 'N/A'}
+Insurance Company: ${lead.insurance_company || 'N/A'}
+Third Party Vehicle Registration: ${lead.third_party_vehicle_registration || 'N/A'}
+Other Party Admit Fault: ${lead.other_party_admit_fault ? 'Yes' : 'No'}
+Passengers Count: ${lead.passengers_count || 0}
+Prior Attorney Involved: ${lead.prior_attorney_involved ? 'Yes' : 'No'}
+Prior Attorney Details: ${lead.prior_attorney_details || 'N/A'}
+
+Witness/Contact Information:
+Contact Name: ${lead.contact_name || 'N/A'}
+Contact Number: ${lead.contact_number || 'N/A'}
+Contact Address: ${lead.contact_address || 'N/A'}
+
 Notes: ${lead.additional_notes}
 Submission ID: ${lead.submission_id}
     `.trim();
@@ -84,6 +113,7 @@ Submission ID: ${lead.submission_id}
             <div>
               <h3 className="font-semibold text-lg">{lead.customer_full_name}</h3>
               <p className="text-sm text-muted-foreground">Age: {lead.age}</p>
+              <p className="text-sm text-muted-foreground">DOB: {lead.date_of_birth}</p>
             </div>
             
             <div className="flex items-center gap-2">
@@ -91,7 +121,10 @@ Submission ID: ${lead.submission_id}
               <span>{lead.phone_number}</span>
             </div>
             
-            
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              <span>{lead.email}</span>
+            </div>
             
             <div className="flex items-start gap-2">
               <MapPin className="h-4 w-4 mt-1" />
@@ -100,34 +133,14 @@ Submission ID: ${lead.submission_id}
                 <div>{lead.city}, {lead.state} {lead.zip_code}</div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              <span>{lead.beneficiary_information}</span>
-            </div>
           </div>
           
           <div className="space-y-3">
             <div>
-              <h4 className="font-medium">Product Details</h4>
-              <p className="text-sm">Carrier: {lead.carrier}</p>
-              <p className="text-sm">Product Type: {lead.product_type}</p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              <div>
-                <div className="font-medium">
-                  Coverage: {lead.coverage_amount ? formatCurrency(lead.coverage_amount) : 'N/A'}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Premium: {lead.monthly_premium ? formatCurrency(lead.monthly_premium) : 'N/A'}/month
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <p className="text-sm"><strong>DOB:</strong> {lead.date_of_birth}</p>
-              <p className="text-sm"><strong>Draft Date:</strong> {lead.draft_date}</p>
+              <h4 className="font-medium">Accident Information</h4>
+              {lead.accident_date && <p className="text-sm">Date: {lead.accident_date}</p>}
+              {lead.accident_location && <p className="text-sm">Location: {lead.accident_location}</p>}
+              {lead.injuries && <p className="text-sm">Injuries: {lead.injuries}</p>}
             </div>
           </div>
         </div>

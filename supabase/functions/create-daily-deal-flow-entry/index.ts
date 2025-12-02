@@ -21,7 +21,25 @@ serve(async (req)=>{
       date, 
       ghl_location_id, 
       ghl_opportunity_id,
-      ghl_contact_id 
+      ghl_contact_id,
+      // Accident and incident fields
+      accident_date,
+      prior_attorney_involved,
+      prior_attorney_details,
+      medical_attention,
+      police_attended,
+      accident_location,
+      accident_scenario,
+      insured,
+      injuries,
+      vehicle_registration,
+      insurance_company,
+      third_party_vehicle_registration,
+      other_party_admit_fault,
+      passengers_count,
+      contact_name,
+      contact_number,
+      contact_address
     } = await req.json();
     
     // Validate required fields
@@ -69,6 +87,24 @@ serve(async (req)=>{
       ghl_location_id,
       ghl_opportunity_id,
       ghlcontactid: ghl_contact_id,
+      // Accident and incident fields
+      accident_date,
+      prior_attorney_involved: prior_attorney_involved !== undefined ? prior_attorney_involved : false,
+      prior_attorney_details,
+      medical_attention,
+      police_attended: police_attended !== undefined ? police_attended : false,
+      accident_location,
+      accident_scenario,
+      insured: insured !== undefined ? insured : false,
+      injuries,
+      vehicle_registration,
+      insurance_company,
+      third_party_vehicle_registration,
+      other_party_admit_fault: other_party_admit_fault !== undefined ? other_party_admit_fault : false,
+      passengers_count,
+      contact_name,
+      contact_number,
+      contact_address,
       // Other fields will be NULL initially
       buffer_agent: null,
       agent: null,

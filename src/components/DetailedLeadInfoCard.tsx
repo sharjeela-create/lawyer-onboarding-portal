@@ -20,27 +20,26 @@ interface DetailedLead {
   birth_state?: string;
   social_security: string;
   driver_license?: string;
-  existing_coverage?: string;
-  previous_applications?: string;
-  height?: string;
-  weight?: string;
-  doctors_name?: string;
-  tobacco_use?: string;
-  health_conditions: string;
-  medications?: string;
-  carrier: string;
-  product_type: string;
-  coverage_amount: number;
-  monthly_premium: number;
-  draft_date: string;
-  future_draft_date?: string;
-  beneficiary_information?: string;
-  institution_name?: string;
-  beneficiary_routing: string;
-  beneficiary_account: string;
-  account_type?: string;
   additional_notes: string;
   lead_vendor?: string;
+  // Accident/Incident fields
+  accident_date?: string;
+  accident_location?: string;
+  accident_scenario?: string;
+  injuries?: string;
+  medical_attention?: string;
+  police_attended?: boolean;
+  insured?: boolean;
+  vehicle_registration?: string;
+  insurance_company?: string;
+  third_party_vehicle_registration?: string;
+  other_party_admit_fault?: boolean;
+  passengers_count?: number;
+  prior_attorney_involved?: boolean;
+  prior_attorney_details?: string;
+  contact_name?: string;
+  contact_number?: string;
+  contact_address?: string;
 }
 
 interface DetailedLeadInfoCardProps {
@@ -53,37 +52,40 @@ export const DetailedLeadInfoCard = ({ lead }: DetailedLeadInfoCardProps) => {
 
   const copyToClipboard = () => {
     const leadInfo = `${lead.lead_vendor || 'Lead Vendor'}: ${lead.customer_full_name}
-Address: ${lead.street_address}, ${lead.city}, ${lead.state} ${lead.zip_code}
-Beneficiary Information: ${lead.beneficiary_information || ''}
-Billing and mailing address is the same: (Y/N)
+
+PERSONAL INFORMATION:
 Date of Birth: ${lead.date_of_birth}
-Birth State: ${lead.birth_state || ''}
 Age: ${lead.age}
-Number: ${lead.phone_number}
-Call phone/landline:
-Social: ${lead.social_security}
-Driver License Number: ${lead.driver_license || ''}
-Exp:
-Existing coverage: ${lead.existing_coverage || ''}
-Applied to life insurance last two years: ${lead.previous_applications || ''}
-Height: ${lead.height || ''}
-Weight: ${lead.weight || ''}
-Doctors Name: ${lead.doctors_name || ''}
-Tobacco Use: ${lead.tobacco_use || ''}
-Health Conditions:
-${lead.health_conditions || ''}
-Medications:
-${lead.medications || ''}
-Insurance Application Details:
-Carrier: ${lead.carrier}
-Monthly Premium: $${lead.monthly_premium}
-Coverage Amount: $${lead.coverage_amount?.toLocaleString()}
-Draft Date: ${lead.draft_date}
-First Draft: ${lead.future_draft_date || ''}
-Bank Name: ${lead.institution_name || ''}
-Routing Number: ${lead.beneficiary_routing}
-Account Number: ${lead.beneficiary_account}
-Checking/savings account: ${lead.account_type || ''}
+Birth State: ${lead.birth_state || ''}
+Social Security: ${lead.social_security}
+Driver License: ${lead.driver_license || ''}
+
+CONTACT INFORMATION:
+Address: ${lead.street_address}, ${lead.city}, ${lead.state} ${lead.zip_code}
+Phone: ${lead.phone_number}
+Email: ${lead.email}
+
+ACCIDENT/INCIDENT INFORMATION:
+Accident Date: ${lead.accident_date || 'N/A'}
+Accident Location: ${lead.accident_location || 'N/A'}
+Accident Scenario: ${lead.accident_scenario || 'N/A'}
+Injuries: ${lead.injuries || 'N/A'}
+Medical Attention: ${lead.medical_attention || 'N/A'}
+Police Attended: ${lead.police_attended ? 'Yes' : 'No'}
+Insured: ${lead.insured ? 'Yes' : 'No'}
+Vehicle Registration: ${lead.vehicle_registration || 'N/A'}
+Insurance Company: ${lead.insurance_company || 'N/A'}
+Third Party Vehicle Registration: ${lead.third_party_vehicle_registration || 'N/A'}
+Other Party Admit Fault: ${lead.other_party_admit_fault ? 'Yes' : 'No'}
+Passengers Count: ${lead.passengers_count || 0}
+Prior Attorney Involved: ${lead.prior_attorney_involved ? 'Yes' : 'No'}
+Prior Attorney Details: ${lead.prior_attorney_details || 'N/A'}
+
+WITNESS/CONTACT INFORMATION:
+Contact Name: ${lead.contact_name || 'N/A'}
+Contact Number: ${lead.contact_number || 'N/A'}
+Contact Address: ${lead.contact_address || 'N/A'}
+
 ADDITIONAL NOTES:
 ${lead.additional_notes}`;
 
@@ -125,39 +127,44 @@ ${lead.additional_notes}`;
             <div className="space-y-1 text-xl font-normal">
               <div><strong>{lead.lead_vendor || 'Lead Vendor'}:</strong> {lead.customer_full_name}</div>
               <br />
-              <div><strong>Address:</strong> {lead.street_address}, {lead.city}, {lead.state} {lead.zip_code}</div>
               
-              <div><strong>Beneficiary Information:</strong> {formatValue(lead.beneficiary_information)}</div>
-              <div><strong>Billing and mailing address is the same:</strong> (Y/N)</div>
+              <div><strong>PERSONAL INFORMATION:</strong></div>
               <div><strong>Date of Birth:</strong> {lead.date_of_birth}</div>
-              <div><strong>Birth State:</strong> {formatValue(lead.birth_state)}</div>
               <div><strong>Age:</strong> {lead.age}</div>
-              <div><strong>Number:</strong> {lead.phone_number}</div>
-              <div><strong>Call phone/landline:</strong></div>
-              <div><strong>Social:</strong> {lead.social_security}</div>
-              <div><strong>Driver License Number:</strong> {formatValue(lead.driver_license)}</div>
-              <div><strong>Exp:</strong></div>
-              <div><strong>Existing coverage:</strong> {formatValue(lead.existing_coverage)}</div>
-              <div><strong>Applied to life insurance last two years:</strong> {formatValue(lead.previous_applications)}</div>
-              <div><strong>Height:</strong> {formatValue(lead.height)}</div>
-              <div><strong>Weight:</strong> {formatValue(lead.weight)}</div>
-              <div><strong>Doctors Name:</strong> {formatValue(lead.doctors_name)}</div>
-              <div><strong>Tobacco Use:</strong> {formatValue(lead.tobacco_use)}</div>
-              <div><strong>Health Conditions:</strong></div>
-              <div className="ml-4">{formatValue(lead.health_conditions)}</div>
-              <div><strong>Medications:</strong></div>
-              <div className="ml-4">{formatValue(lead.medications)}</div>
-              <div><strong>Insurance Application Details:</strong></div>
-              <div><strong>Carrier:</strong> {lead.carrier}</div>
-              <div><strong>Monthly Premium:</strong> ${lead.monthly_premium}</div>
-              <div><strong>Coverage Amount:</strong> ${lead.coverage_amount?.toLocaleString()}</div>
-              <div><strong>Draft Date:</strong> {lead.draft_date}</div>
-              <div><strong>First Draft:</strong> {formatValue(lead.future_draft_date)}</div>
+              <div><strong>Birth State:</strong> {formatValue(lead.birth_state)}</div>
+              <div><strong>Social Security:</strong> {lead.social_security}</div>
+              <div><strong>Driver License:</strong> {formatValue(lead.driver_license)}</div>
               
-              <div><strong>Bank Name:</strong> {formatValue(lead.institution_name)}</div>
-              <div><strong>Routing Number:</strong> {lead.beneficiary_routing}</div>
-              <div><strong>Account Number:</strong> {lead.beneficiary_account}</div>
-              <div><strong>Checking/savings account:</strong> {formatValue(lead.account_type)}</div>
+              <br />
+              <div><strong>CONTACT INFORMATION:</strong></div>
+              <div><strong>Address:</strong> {lead.street_address}, {lead.city}, {lead.state} {lead.zip_code}</div>
+              <div><strong>Phone:</strong> {lead.phone_number}</div>
+              <div><strong>Email:</strong> {lead.email}</div>
+              
+              <br />
+              <div><strong>ACCIDENT/INCIDENT INFORMATION:</strong></div>
+              <div><strong>Accident Date:</strong> {formatValue(lead.accident_date)}</div>
+              <div><strong>Accident Location:</strong> {formatValue(lead.accident_location)}</div>
+              <div><strong>Accident Scenario:</strong> {formatValue(lead.accident_scenario)}</div>
+              <div><strong>Injuries:</strong> {formatValue(lead.injuries)}</div>
+              <div><strong>Medical Attention:</strong> {formatValue(lead.medical_attention)}</div>
+              <div><strong>Police Attended:</strong> {lead.police_attended ? 'Yes' : 'No'}</div>
+              <div><strong>Insured:</strong> {lead.insured ? 'Yes' : 'No'}</div>
+              <div><strong>Vehicle Registration:</strong> {formatValue(lead.vehicle_registration)}</div>
+              <div><strong>Insurance Company:</strong> {formatValue(lead.insurance_company)}</div>
+              <div><strong>Third Party Vehicle Registration:</strong> {formatValue(lead.third_party_vehicle_registration)}</div>
+              <div><strong>Other Party Admit Fault:</strong> {lead.other_party_admit_fault ? 'Yes' : 'No'}</div>
+              <div><strong>Passengers Count:</strong> {lead.passengers_count || 0}</div>
+              <div><strong>Prior Attorney Involved:</strong> {lead.prior_attorney_involved ? 'Yes' : 'No'}</div>
+              <div><strong>Prior Attorney Details:</strong> {formatValue(lead.prior_attorney_details)}</div>
+              
+              <br />
+              <div><strong>WITNESS/CONTACT INFORMATION:</strong></div>
+              <div><strong>Contact Name:</strong> {formatValue(lead.contact_name)}</div>
+              <div><strong>Contact Number:</strong> {formatValue(lead.contact_number)}</div>
+              <div><strong>Contact Address:</strong> {formatValue(lead.contact_address)}</div>
+              
+              <br />
               <div><strong>ADDITIONAL NOTES:</strong></div>
               <div className="ml-4 whitespace-pre-wrap bg-muted p-3 rounded-md">{lead.additional_notes}</div>
             </div>

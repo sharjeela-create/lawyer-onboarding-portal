@@ -10,6 +10,11 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
   }
   public: {
@@ -241,89 +246,140 @@ export type Database = {
       }
       call_results: {
         Row: {
+          accident_date: string | null
+          accident_location: string | null
+          accident_scenario: string | null
           agent_id: string | null
           agent_who_took_call: string | null
           application_submitted: boolean | null
           buffer_agent: string | null
           call_source: string | null
           carrier: string | null
+          contact_address: string | null
+          contact_name: string | null
+          contact_number: string | null
           coverage_amount: number | null
           created_at: string | null
           dq_reason: string | null
           draft_date: string | null
           face_amount: number | null
           id: string
+          injuries: string | null
+          insurance_company: string | null
+          insured: boolean | null
           lead_id: string | null
           licensed_agent_account: string | null
+          medical_attention: string | null
           monthly_premium: number | null
           new_draft_date: string | null
           notes: string | null
+          other_party_admit_fault: boolean | null
+          passengers_count: number | null
+          police_attended: boolean | null
+          prior_attorney_details: string | null
+          prior_attorney_involved: boolean | null
           product_type: string | null
           sent_to_underwriting: boolean | null
           status: string | null
           submission_date: string | null
           submission_id: string | null
           submitting_agent: string | null
+          third_party_vehicle_registration: string | null
           updated_at: string | null
           user_id: string | null
+          vehicle_registration: string | null
           is_callback: boolean | null
           is_retention_call: boolean | null
         }
         Insert: {
+          accident_date?: string | null
+          accident_location?: string | null
+          accident_scenario?: string | null
           agent_id?: string | null
           agent_who_took_call?: string | null
           application_submitted?: boolean | null
           buffer_agent?: string | null
           call_source?: string | null
           carrier?: string | null
+          contact_address?: string | null
+          contact_name?: string | null
+          contact_number?: string | null
           coverage_amount?: number | null
           created_at?: string | null
           dq_reason?: string | null
           draft_date?: string | null
           face_amount?: number | null
           id?: string
+          injuries?: string | null
+          insurance_company?: string | null
+          insured?: boolean | null
           lead_id?: string | null
           licensed_agent_account?: string | null
+          medical_attention?: string | null
           monthly_premium?: number | null
           new_draft_date?: string | null
           notes?: string | null
+          other_party_admit_fault?: boolean | null
+          passengers_count?: number | null
+          police_attended?: boolean | null
+          prior_attorney_details?: string | null
+          prior_attorney_involved?: boolean | null
           product_type?: string | null
           sent_to_underwriting?: boolean | null
           status?: string | null
           submission_date?: string | null
           submission_id?: string | null
           submitting_agent?: string | null
+          third_party_vehicle_registration?: string | null
           updated_at?: string | null
           user_id?: string | null
+          vehicle_registration?: string | null
           is_callback?: boolean | null
           is_retention_call?: boolean | null
         }
         Update: {
+          accident_date?: string | null
+          accident_location?: string | null
+          accident_scenario?: string | null
           agent_id?: string | null
           agent_who_took_call?: string | null
           application_submitted?: boolean | null
           buffer_agent?: string | null
           call_source?: string | null
           carrier?: string | null
+          contact_address?: string | null
+          contact_name?: string | null
+          contact_number?: string | null
           coverage_amount?: number | null
           created_at?: string | null
           dq_reason?: string | null
           draft_date?: string | null
           face_amount?: number | null
           id?: string
+          injuries?: string | null
+          insurance_company?: string | null
+          insured?: boolean | null
           lead_id?: string | null
           licensed_agent_account?: string | null
+          medical_attention?: string | null
           monthly_premium?: number | null
           new_draft_date?: string | null
           notes?: string | null
+          other_party_admit_fault?: boolean | null
+          passengers_count?: number | null
+          police_attended?: boolean | null
+          prior_attorney_details?: string | null
+          prior_attorney_involved?: boolean | null
           product_type?: string | null
           sent_to_underwriting?: boolean | null
           status?: string | null
           submission_date?: string | null
           submission_id?: string | null
           submitting_agent?: string | null
+          third_party_vehicle_registration?: string | null
           updated_at?: string | null
           user_id?: string | null
+          vehicle_registration?: string | null
           is_callback?: boolean | null
           is_retention_call?: boolean | null
         }
@@ -539,6 +595,23 @@ export type Database = {
           street_address: string | null
           submission_date: string | null
           submission_id: string | null
+          accident_date: string | null
+          prior_attorney_involved: boolean | null
+          prior_attorney_details: string | null
+          medical_attention: string | null
+          police_attended: boolean | null
+          accident_location: string | null
+          accident_scenario: string | null
+          insured: boolean | null
+          injuries: string | null
+          vehicle_registration: string | null
+          insurance_company: string | null
+          third_party_vehicle_registration: string | null
+          other_party_admit_fault: boolean | null
+          passengers_count: number | null
+          contact_name: string | null
+          contact_number: string | null
+          contact_address: string | null
           tobacco_use: string | null
           updated_at: string | null
           user_id: string | null
@@ -584,6 +657,23 @@ export type Database = {
           street_address?: string | null
           submission_date?: string | null
           submission_id?: string | null
+          accident_date?: string | null
+          prior_attorney_involved?: boolean | null
+          prior_attorney_details?: string | null
+          medical_attention?: string | null
+          police_attended?: boolean | null
+          accident_location?: string | null
+          accident_scenario?: string | null
+          insured?: boolean | null
+          injuries?: string | null
+          vehicle_registration?: string | null
+          insurance_company?: string | null
+          third_party_vehicle_registration?: string | null
+          other_party_admit_fault?: boolean | null
+          passengers_count?: number | null
+          contact_name?: string | null
+          contact_number?: string | null
+          contact_address?: string | null
           tobacco_use?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -629,6 +719,23 @@ export type Database = {
           street_address?: string | null
           submission_date?: string | null
           submission_id?: string | null
+          accident_date?: string | null
+          prior_attorney_involved?: boolean | null
+          prior_attorney_details?: string | null
+          medical_attention?: string | null
+          police_attended?: boolean | null
+          accident_location?: string | null
+          accident_scenario?: string | null
+          insured?: boolean | null
+          injuries?: string | null
+          vehicle_registration?: string | null
+          insurance_company?: string | null
+          third_party_vehicle_registration?: string | null
+          other_party_admit_fault?: boolean | null
+          passengers_count?: number | null
+          contact_name?: string | null
+          contact_number?: string | null
+          contact_address?: string | null
           tobacco_use?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -917,6 +1024,7 @@ export type Database = {
           p_customer_name?: string
           p_event_details?: Json
           p_event_type: string
+          p_is_retention_call?: boolean
           p_lead_vendor?: string
           p_session_id?: string
           p_submission_id: string

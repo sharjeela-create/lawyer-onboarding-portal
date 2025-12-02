@@ -192,6 +192,7 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
 
       if (agentType === 'buffer') {
         // Traditional buffer agent workflow
+        const bufferAgentName = bufferAgents.find(a => a.id === selectedAgent)?.display_name || 'Buffer Agent';
         sessionData = {
           submission_id: submissionId,
           buffer_agent_id: selectedAgent,
@@ -203,11 +204,13 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
           type: 'verification_started',
           submissionId,
           agentType: 'buffer',
-          bufferAgentName: bufferAgents.find(a => a.id === selectedAgent)?.display_name || 'Buffer Agent',
+          agentName: bufferAgentName,
+          bufferAgentName: bufferAgentName,
           leadData
         };
       } else {
         // Direct LA workflow - agent takes call directly and claims it
+        const licensedAgentName = licensedAgents.find(a => a.id === selectedLA)?.display_name || 'Licensed Agent';
         sessionData = {
           submission_id: submissionId,
           licensed_agent_id: selectedLA,
@@ -219,7 +222,8 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
           type: 'verification_started',
           submissionId,
           agentType: 'licensed',
-          licensedAgentName: licensedAgents.find(a => a.id === selectedLA)?.display_name || 'Licensed Agent',
+          agentName: licensedAgentName,
+          licensedAgentName: licensedAgentName,
           leadData
         };
       }
@@ -260,23 +264,53 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
 
       // Update agent status based on workflow type
       const agentId = agentType === 'buffer' ? selectedAgent : selectedLA;
-      const { error: statusError } = await supabase
+      
+      // Check if agent status exists
+      const { data: existingStatus } = await supabase
         .from('agent_status')
-        .upsert({
-          user_id: agentId,
-          status: 'on_call',
-          current_session_id: session.id,
-          last_activity: new Date().toISOString()
-        });
+        .select('id')
+        .eq('user_id', agentId)
+        .single();
+
+      let statusError;
+      if (existingStatus) {
+        // Update existing status
+        const { error } = await supabase
+          .from('agent_status')
+          .update({
+            status: 'on_call',
+            current_session_id: session.id,
+            last_activity: new Date().toISOString()
+          })
+          .eq('user_id', agentId);
+        statusError = error;
+      } else {
+        // Insert new status
+        const { error } = await supabase
+          .from('agent_status')
+          .insert({
+            user_id: agentId,
+            status: 'on_call',
+            agent_type: agentType,
+            current_session_id: session.id,
+            last_activity: new Date().toISOString()
+          });
+        statusError = error;
+      }
 
       if (statusError) {
         console.warn('Failed to update agent status:', statusError);
       }
 
       // Send notification to center when verification starts
-      await supabase.functions.invoke('center-transfer-notification', {
+      const { data: notificationData, error: notificationError } = await supabase.functions.invoke('center-transfer-notification', {
         body: notificationPayload
       });
+
+      if (notificationError) {
+        console.warn('Failed to send notification:', notificationError);
+        // Don't throw - continue with verification even if notification fails
+      }
 
       // Log the verification started event
       const { customerName, leadVendor } = await getLeadInfo(submissionId);
@@ -344,9 +378,11 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
       onVerificationStarted?.(session.id);
     } catch (error) {
       console.error('Error starting verification:', error);
+      // Log the full error object for debugging
+      console.error('Error details:', JSON.stringify(error, null, 2));
       toast({
         title: "Error",
-        description: "Failed to start verification session",
+        description: error instanceof Error ? error.message : "Failed to start verification session",
         variant: "destructive",
       });
     } finally {

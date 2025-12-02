@@ -21,34 +21,7 @@ serve(async (req)=>{
     }
     // Center mapping for different lead vendors
     const leadVendorCenterMapping = {
-      "Ark Tech": "#orbit-team-ark-tech",
-      "GrowthOnics BPO": "#orbit-team-growthonics-bpo",
-      "Maverick": "#orbit-team-maverick-comm",
-      "Omnitalk BPO": "#orbit-team-omnitalk-bpo",
-      "Vize BPO": "#orbit-team-vize-bpo",
-      "Corebiz": "#orbit-team-corebiz-bpo",
-      "Digicon": "#orbit-team-digicon-bpo",
-      "Ambition": "#orbit-team-ambition-bpo",
-      "Benchmark": "#orbit-team-benchmark-bpo",
-      "Poshenee": "#orbit-team-poshenee-tech-bpo",
-      "Plexi": "#orbit-team-plexi-bpo",
-      "Gigabite": "#orbit-team-gigabite-bpo",
-      "Everline solution": "#orbit-team-everline-bpo",
-      "Progressive BPO": "#orbit-team-progressive-bpo",
-      "Cerberus BPO": "#orbit-team-cerberus-bpo",
-      "NanoTech": "#orbit-team-nanotech-bpo",
-      "Optimum BPO": "#orbit-team-optimum-bpo",
-      "Ethos BPO": "#orbit-team-ethos-bpo",
-      "Trust Link": "#orbit-team-trust-link",
-      "Quotes BPO": "#obit-team-quotes-bpo",
-      "Zupax Marketing": "#orbit-team-zupax-marketing",
-      "Argon Communications": "#orbit-team-argon-communications",
-      "Care Solutions": "#test-bpo",
-      "Cutting Edge": "#test-bpo",
-      "Next Era": "#test-bpo",
-      "Rock BPO": "#orbit-team-rock-bpo",
-      "Avenue Consultancy": "#test-bpo",
-      "Crown Connect BPO": "#orbit-team-crown-connect-bpo"
+      "Ark Tech": "#orbit-team-ark-tech"
     };
     const leadVendor = leadData?.lead_vendor;
     if (!leadVendor) {

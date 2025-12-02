@@ -121,6 +121,14 @@ serve(async (req)=>{
     // Status mapping function (same as create-new-callback-sheet)
     const mapStatusToSheetValue = (userSelectedStatus)=>{
       const statusMap = {
+        // New statuses map to themselves
+        "Incomplete Transfer": "Incomplete Transfer",
+        "Returned To Center - DQ": "Returned To Center - DQ",
+        "Previously Sold BPO": "Previously Sold BPO",
+        "Needs BPO Callback": "Needs BPO Callback",
+        "Application Withdrawn": "Application Withdrawn",
+        "Pending Information": "Pending Information",
+        // Legacy mappings for backward compatibility
         "Needs callback": "Needs BPO Callback",
         "Call Never Sent": "Incomplete Transfer",
         "Not Interested": "Returned To Center - DQ",
@@ -129,7 +137,8 @@ serve(async (req)=>{
         "Future Submission Date": "Application Withdrawn",
         "Call Back Fix": "Call Back Fix",
         "Disconnected": "Incomplete Transfer",
-        "Disconnected - Never Retransferred": "Incomplete Transfer"
+        "Disconnected - Never Retransferred": "Incomplete Transfer",
+        "GI - Currently DQ": "Returned To Center - DQ"
       };
       return statusMap[userSelectedStatus] || userSelectedStatus;
     };

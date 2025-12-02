@@ -35,6 +35,14 @@ const generateCallbackSubmissionId = (originalSubmissionId)=>{
 // Complete status mapping function (matches CallResultForm statusOptions)
 const mapStatusToSheetValue = (userSelectedStatus)=>{
   const statusMap = {
+    // New statuses map to themselves
+    "Incomplete Transfer": "Incomplete Transfer",
+    "Returned To Center - DQ": "Returned To Center - DQ",
+    "Previously Sold BPO": "Previously Sold BPO",
+    "Needs BPO Callback": "Needs BPO Callback",
+    "Application Withdrawn": "Application Withdrawn",
+    "Pending Information": "Pending Information",
+    // Legacy mappings for backward compatibility
     "Needs callback": "Needs BPO Callback",
     "Call Never Sent": "Incomplete Transfer",
     "Not Interested": "Returned To Center - DQ",
@@ -45,7 +53,8 @@ const mapStatusToSheetValue = (userSelectedStatus)=>{
     "Disconnected - Never Retransferred": "Incomplete Transfer",
     "Fulfilled carrier requirements": "Fulfilled carrier requirements",
     "Updated Banking/draft date": "Pending Failed Payment Fix",
-    "Chargeback DQ": "Chargeback DQ"
+    "Chargeback DQ": "Chargeback DQ",
+    "GI - Currently DQ": "Returned To Center - DQ"
   };
   // Clean the status to handle Unicode characters
   const cleanStatus = userSelectedStatus?.trim().replace(/⁠/g, ''); // Remove word joiner
@@ -94,7 +103,7 @@ serve(async (req)=>{
     const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
     // Get parameters from request body
     requestBody = await req.json();
-    const { submission_id, call_source, buffer_agent, agent, licensed_agent_account, status, call_result, carrier, product_type, draft_date, monthly_premium, face_amount, notes, policy_number, carrier_audit, product_type_carrier, level_or_gi, from_callback, is_callback = false, create_new_entry = false, original_submission_id = null, application_submitted = null, sent_to_underwriting = null, lead_vendor, is_retention_call = false } = requestBody;
+    const { submission_id, call_source, buffer_agent, agent, licensed_agent_account, status, call_result, carrier, product_type, draft_date, monthly_premium, face_amount, notes, policy_number, carrier_audit, product_type_carrier, level_or_gi, from_callback, is_callback = false, create_new_entry = false, original_submission_id = null, application_submitted = null, sent_to_underwriting = null, lead_vendor, is_retention_call = false, carrier_attempted_1 = null, carrier_attempted_2 = null, carrier_attempted_3 = null, accident_date = null, prior_attorney_involved = null, prior_attorney_details = null, medical_attention = null, police_attended = null, accident_location = null, accident_scenario = null, insured = null, injuries = null, vehicle_registration = null, insurance_company = null, third_party_vehicle_registration = null, other_party_admit_fault = null, passengers_count = null } = requestBody;
     // Validate required fields
     if (!submission_id) {
       throw new Error('Missing required field: submission_id');
@@ -189,6 +198,23 @@ serve(async (req)=>{
             face_amount,
             notes,
             policy_number,
+            carrier_attempted_1,
+            carrier_attempted_2,
+            carrier_attempted_3,
+            accident_date,
+            prior_attorney_involved,
+            prior_attorney_details,
+            medical_attention,
+            police_attended,
+            accident_location,
+            accident_scenario,
+            insured,
+            injuries,
+            vehicle_registration,
+            insurance_company,
+            third_party_vehicle_registration,
+            other_party_admit_fault,
+            passengers_count,
             carrier_audit,
             product_type_carrier,
             level_or_gi,
@@ -228,7 +254,24 @@ serve(async (req)=>{
             level_or_gi,
             from_callback,
             is_callback,
-            is_retention_call
+            is_retention_call,
+            carrier_attempted_1,
+            carrier_attempted_2,
+            carrier_attempted_3,
+            accident_date,
+            prior_attorney_involved,
+            prior_attorney_details,
+            medical_attention,
+            police_attended,
+            accident_location,
+            accident_scenario,
+            insured,
+            injuries,
+            vehicle_registration,
+            insurance_company,
+            third_party_vehicle_registration,
+            other_party_admit_fault,
+            passengers_count
           }).select().single();
           if (error) {
             console.error('Error inserting new daily deal flow entry:', error);
@@ -255,6 +298,36 @@ serve(async (req)=>{
           licensed_agent_account,
           status: finalStatus,
           call_result: callResultStatus,
+          carrier,
+          product_type,
+          draft_date,
+          monthly_premium,
+          face_amount,
+          notes,
+          policy_number,
+          carrier_audit,
+          product_type_carrier,
+          level_or_gi,
+          from_callback,
+          is_callback,
+          is_retention_call,
+          carrier_attempted_1,
+          carrier_attempted_2,
+          carrier_attempted_3,
+          accident_date,
+          prior_attorney_involved,
+          prior_attorney_details,
+          medical_attention,
+          police_attended,
+          accident_location,
+          accident_scenario,
+          insured,
+          injuries,
+          vehicle_registration,
+          insurance_company,
+          third_party_vehicle_registration,
+          other_party_admit_fault,
+          passengers_count,
           carrier,
           product_type,
           draft_date,
@@ -301,7 +374,24 @@ serve(async (req)=>{
           level_or_gi,
           from_callback,
           is_callback,
-          is_retention_call
+          is_retention_call,
+          carrier_attempted_1,
+          carrier_attempted_2,
+          carrier_attempted_3,
+          accident_date,
+          prior_attorney_involved,
+          prior_attorney_details,
+          medical_attention,
+          police_attended,
+          accident_location,
+          accident_scenario,
+          insured,
+          injuries,
+          vehicle_registration,
+          insurance_company,
+          third_party_vehicle_registration,
+          other_party_admit_fault,
+          passengers_count
         }).select().single();
         if (error) {
           console.error('Error inserting new daily deal flow entry:', error);

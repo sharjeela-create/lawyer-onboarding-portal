@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Filter, Phone, User, DollarSign, CheckCircle, BarChart3, Eye, Clock, Grid3X3, Search, UserPlus, AlertCircle, Database as DatabaseIcon } from 'lucide-react';
+import { Filter, Phone, User, Eye, Clock, UserPlus, ChevronDown, ChevronUp } from 'lucide-react';
 import { NavigationHeader } from '@/components/NavigationHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +14,6 @@ import { isRestrictedUser } from '@/lib/userPermissions';
 import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { VerificationDashboard } from '@/components/VerificationDashboard';
 import { ClaimDroppedCallModal } from '@/components/ClaimDroppedCallModal';
 import { ClaimLicensedAgentModal } from '@/components/ClaimLicensedAgentModal';
 import { logCallUpdate, getLeadInfo } from '@/lib/callLogging';
@@ -37,34 +35,15 @@ const Dashboard = () => {
   const [leads, setLeads] = useState<LeadWithCallResult[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<LeadWithCallResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Track which lead cards are expanded (show accident details)
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const [dateFilter, setDateFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [nameFilter, setNameFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   
-  // Analytics state
-  const [analytics, setAnalytics] = useState({
-    totalLeads: 0,
-    submittedLeads: 0,
-    pendingLeads: 0,
-    leadsThisWeek: 0,
-  });
-  
-  // Commission stats for licensed agents
-  const [commissionStats, setCommissionStats] = useState({
-    totalSales: 0,
-    thisWeekSales: 0,
-    thisWeekPremium: 0,
-    todaySales: 0,
-    levelProducts: 0,
-    giProducts: 0,
-    levelPremium: 0,
-    giPremium: 0,
-  });
-  
-  const [isLicensedAgent, setIsLicensedAgent] = useState(false);
-  const [licensedAgentName, setLicensedAgentName] = useState<string>('');
+  // No analytics: we only query the leads table
   
   const isBen = user?.id === '424f4ea8-1b8c-4c0f-bc13-3ea699900c79';
   const isAuthorizedUser = user?.id === '424f4ea8-1b8c-4c0f-bc13-3ea699900c79' || user?.id === '9c004d97-b5fb-4ed6-805e-e2c383fe8b6f' || user?.id === 'c2f07638-d3d2-4fe9-9a65-f57395745695' || user?.id === '30b23a3f-df6b-40af-85d1-84d3e6f0b8b4' || user?.id === 'd68d18e4-9deb-4282-b4d0-1e6e6a0789e9';
@@ -97,12 +76,8 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
-      checkIfLicensedAgent();
-      // Optimization 3: Run data fetches in parallel instead of sequential
-      Promise.all([
-        fetchLeads(), // Load recent leads initially
-        fetchAnalytics()
-      ]);
+      // Load recent leads initially
+      fetchLeads();
     }
   }, [user]);
 
@@ -127,51 +102,16 @@ const Dashboard = () => {
 
   const fetchLeads = async (searchTerm?: string) => {
     try {
-      // Optimization 1: Use single query with joins instead of multiple queries
-      // Load all leads for better search functionality
+      // Query only the leads table (no joins)
       let query = supabase
         .from('leads')
-        .select(`
-          *,
-          call_results!left(
-            id,
-            application_submitted,
-            status,
-            carrier,
-            product_type,
-            buffer_agent,
-            agent_who_took_call,
-            licensed_agent_account,
-            call_source,
-            draft_date,
-            monthly_premium,
-            coverage_amount,
-            submission_date,
-            sent_to_underwriting,
-            notes,
-            created_at
-          ),
-          verification_sessions!left(
-            id,
-            status,
-            progress_percentage,
-            created_at
-          )
-        `, { count: 'exact' })
+        .select(`*`, { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      // If searching, apply server-side search instead of loading all records
+      // If searching, apply server-side search on common lead fields
       if (searchTerm && searchTerm.trim()) {
         const searchValue = `%${searchTerm.trim()}%`;
-
-        // Use a more complex query that searches across leads and joined call_results
-        // We'll need to do this in a way that Supabase can handle
         query = query.or(`customer_full_name.ilike.${searchValue},submission_id.ilike.${searchValue},phone_number.ilike.${searchValue},email.ilike.${searchValue}`);
-
-        // For call_results fields, we'll need to filter after fetching since Supabase
-        // doesn't support complex OR across joined tables easily
-        // Remove range limit when searching to get all matches
-        // No range() call here - let it return all matches
       } else {
         // For non-search loads, limit to recent records
         query = query.range(0, 4999);
@@ -187,15 +127,12 @@ const Dashboard = () => {
         return;
       }
 
-      // Data is already joined, just need to format for compatibility
-      const leadsWithData = leadsData.map(lead => {
-        const { call_results, verification_sessions, ...leadData } = lead;
-        return {
-          ...leadData,
-          call_results: Array.isArray(call_results) ? call_results : (call_results ? [call_results] : []),
-          verification_sessions: Array.isArray(verification_sessions) ? verification_sessions : (verification_sessions ? [verification_sessions] : [])
-        } as LeadWithCallResult;
-      });
+      // Ensure call_results and verification_sessions are present as arrays for compatibility
+      const leadsWithData = leadsData.map(lead => ({
+        ...(lead as Lead),
+        call_results: [],
+        verification_sessions: []
+      })) as LeadWithCallResult[];
 
       setLeads(leadsWithData || []);
     } catch (error) {
@@ -210,148 +147,11 @@ const Dashboard = () => {
     }
   };
 
-  const fetchAnalytics = async () => {
-    try {
-      // Use the database function for accurate analytics
-      const { data, error } = await supabase.rpc('get_dashboard_analytics');
-      
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        const stats = data[0];
-        setAnalytics({
-          totalLeads: Number(stats.total_leads),
-          submittedLeads: Number(stats.submitted_leads),
-          pendingLeads: Number(stats.pending_leads),
-          leadsThisWeek: Number(stats.leads_this_week),
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
-      // Fallback: keep default analytics on error
-    }
+  const toggleExpand = (id: string) => {
+    setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const checkIfLicensedAgent = async () => {
-    if (!user) return;
-    
-    try {
-      // Check if user has a profile with display_name
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (profile?.display_name) {
-        setLicensedAgentName(profile.display_name);
-        setIsLicensedAgent(true);
-        // Fetch commission stats for this licensed agent
-        fetchCommissionStats(profile.display_name);
-      }
-    } catch (error) {
-      console.error('Error checking licensed agent status:', error);
-    }
-  };
-
-  const fetchCommissionStats = async (displayName: string) => {
-    try {
-      // Get current date in YYYY-MM-DD format (EST timezone)
-      const todayDateString = getTodayDateEST();
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekAgoDateString = weekAgo.toISOString().split('T')[0]; // This is for comparison, keep as UTC for relative calculation
-      
-      // Fetch ALL submissions with "Pending Approval" status for total sales count
-      const { data: allSubmissions, error: allError } = await supabase
-        .from('daily_deal_flow')
-        .select('id, date')
-        .eq('licensed_agent_account', displayName)
-        .eq('status', 'Pending Approval');
-      
-      if (allError) throw allError;
-      const totalSales = allSubmissions?.length || 0;
-      
-      // Fetch TODAY's submissions with "Pending Approval" status
-      const { data: todayData, error: todayError } = await supabase
-        .from('daily_deal_flow')
-        .select('monthly_premium, product_type, carrier, date')
-        .eq('licensed_agent_account', displayName)
-        .eq('status', 'Pending Approval')
-        .eq('date', todayDateString);
-      
-      if (todayError) throw todayError;
-      const todaySales = todayData?.length || 0;
-      
-      // Fetch THIS WEEK's submissions with "Pending Approval" status
-      const { data: weekData, error: weekError } = await supabase
-        .from('daily_deal_flow')
-        .select('monthly_premium, product_type, carrier, date')
-        .eq('licensed_agent_account', displayName)
-        .eq('status', 'Pending Approval')
-        .gte('date', weekAgoDateString);
-      
-      if (weekError) throw weekError;
-      
-      const thisWeekSales = weekData?.length || 0;
-      
-      // Calculate This Week Premium
-      const thisWeekPremium = weekData?.reduce((sum, item) => sum + (item.monthly_premium || 0), 0) || 0;
-      
-      // Categorize products for the week: Level vs GI with their premiums
-      let levelCount = 0;
-      let giCount = 0;
-      let levelPremium = 0;
-      let giPremium = 0;
-      
-      weekData?.forEach(item => {
-        const productType = item.product_type?.toLowerCase() || '';
-        const carrier = item.carrier?.toLowerCase() || '';
-        const premium = item.monthly_premium || 0;
-        
-        // Check if it's GTL Graded (count as GI)
-        if (productType.includes('graded') && carrier.includes('gtl')) {
-          giCount++;
-          giPremium += premium;
-        }
-        // Level products (including non-GTL Graded)
-        else if (productType.includes('level') || productType.includes('graded')) {
-          levelCount++;
-          levelPremium += premium;
-        }
-        // GI and related products
-        else if (
-          productType.includes('gi') ||
-          productType.includes('immediate') ||
-          productType.includes('rop') ||
-          productType.includes('modified') ||
-          productType.includes('standard') ||
-          productType.includes('preferred')
-        ) {
-          giCount++;
-          giPremium += premium;
-        }
-        // Default: if unclear, count as Level
-        else if (productType) {
-          levelCount++;
-          levelPremium += premium;
-        }
-      });
-      
-      setCommissionStats({
-        totalSales,
-        thisWeekSales,
-        thisWeekPremium,
-        todaySales,
-        levelProducts: levelCount,
-        giProducts: giCount,
-        levelPremium,
-        giPremium,
-      });
-    } catch (error) {
-      console.error('Error fetching commission stats:', error);
-    }
-  };
+  // No analytics-related functions
 
   const applyFilters = () => {
     let filtered = leads;
@@ -480,7 +280,13 @@ const Dashboard = () => {
 
       // Create verification items from lead data
       const verificationItems = [];
+      // Include newly added accident/contact fields first so they appear at the top
       const leadFields = [
+        'accident_date', 'accident_location', 'accident_scenario', 'injuries', 'medical_attention',
+        'police_attended', 'insured', 'vehicle_registration', 'insurance_company',
+        'third_party_vehicle_registration', 'other_party_admit_fault', 'passengers_count',
+        'prior_attorney_involved', 'prior_attorney_details', 'contact_name', 'contact_number',
+        'contact_address',
         'lead_vendor', 'customer_full_name', 'street_address', 'beneficiary_information',
         'billing_and_mailing_address_is_the_same', 'date_of_birth', 'age', 'phone_number',
         'social_security', 'driver_license', 'exp', 'existing_coverage',
@@ -698,9 +504,8 @@ const Dashboard = () => {
         description: `Call claimed by ${agentName}`,
       });
       
-      // Refresh leads data and analytics
+      // Refresh leads data
       fetchLeads();
-      fetchAnalytics();
       
       // Auto-redirect to the detailed session page - this will open existing session or create new one
       navigate(`/call-result-update?submissionId=${submissionIdForRedirect}`);
@@ -737,82 +542,6 @@ const Dashboard = () => {
       <NavigationHeader title="Agent Dashboard" />
 
       <div className="container mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className={`grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 ${isLicensedAgent ? 'grid-rows-2' : ''}`}>
-          {/* Row 1 - Always shown */}
-          <Card className="bg-blue-50 border-blue-100">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-blue-700 font-medium">Total Leads</span>
-              </div>
-              <p className="text-2xl font-bold text-blue-900">{analytics.totalLeads.toLocaleString()}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-green-50 border-green-100">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-green-700 font-medium">Submitted</span>
-              </div>
-              <p className="text-2xl font-bold text-green-900">{analytics.submittedLeads.toLocaleString()}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-yellow-50 border-yellow-100">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm text-yellow-700 font-medium">Pending</span>
-              </div>
-              <p className="text-2xl font-bold text-yellow-900">{analytics.pendingLeads.toLocaleString()}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-purple-50 border-purple-100">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-purple-600" />
-                <span className="text-sm text-purple-700 font-medium">This Week</span>
-              </div>
-              <p className="text-2xl font-bold text-purple-900">{analytics.leadsThisWeek.toLocaleString()}</p>
-            </CardContent>
-          </Card>
-          
-          {/* Row 2 - Commission Stats (Only for Licensed Agents) */}
-          {isLicensedAgent && (
-            <>
-              <Card className="bg-emerald-50 border-emerald-100">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-4 w-4 text-emerald-600" />
-                    <span className="text-sm text-emerald-700 font-medium">Your Total Sales</span>
-                  </div>
-                  <p className="text-2xl font-bold text-emerald-900">{commissionStats.totalSales.toLocaleString()}</p>
-                  <p className="text-xs text-emerald-600 mt-1">All-time submissions</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-cyan-50 border-cyan-100">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-cyan-600" />
-                    <span className="text-sm text-cyan-700 font-medium">This Week Sales</span>
-                  </div>
-                  <p className="text-2xl font-bold text-cyan-900">{commissionStats.thisWeekSales.toLocaleString()}</p>
-                  <p className="text-xs text-cyan-600 mt-1">Last 7 days</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-orange-50 border-orange-100">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-orange-600" />
-                    <span className="text-sm text-orange-700 font-medium">Today's Submissions</span>
-                  </div>
-                  <p className="text-2xl font-bold text-orange-900">{commissionStats.todaySales.toLocaleString()}</p>
-                  <p className="text-xs text-orange-600 mt-1">So far today</p>
-                </CardContent>
-              </Card>
-            </>
-          )}
-        </div>
 
         {/* Filters */}
         <Card className="mb-6">
@@ -880,14 +609,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Main Content with Tabs */}
-        <Tabs defaultValue="leads" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="leads">Your Leads</TabsTrigger>
-            <TabsTrigger value="verification">Verification Dashboard</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="leads" className="space-y-4">
+        {/* Main Content */}
+        <div className="space-y-6">
             {/* Leads List */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -912,36 +635,80 @@ const Dashboard = () => {
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                           <div className="space-y-3 flex-1">
-                            <div className="flex items-center space-x-3">
-                              <h3 className="text-lg font-semibold">{lead.customer_full_name}</h3>
+                            <div
+                              className="flex items-center space-x-3 cursor-pointer select-none group"
+                              onClick={() => toggleExpand(lead.id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(lead.id); } }}
+                            >
+                              <h3 className="text-lg font-semibold group-hover:underline">{lead.customer_full_name}</h3>
                               <Badge className={getStatusColor(getLeadStatus(lead))}>
                                 {getLeadStatus(lead)}
                               </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); toggleExpand(lead.id); }}
+                                className="ml-2 flex items-center gap-1"
+                                aria-expanded={!!expandedCards[lead.id]}
+                                title={expandedCards[lead.id] ? 'Hide details' : 'Show details'}
+                              >
+                                {expandedCards[lead.id] ? (
+                                  <>
+                                    <ChevronUp className="h-4 w-4" />
+                                    <span className="hidden sm:inline text-sm text-muted-foreground">Hide</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="h-4 w-4" />
+                                    <span className="hidden sm:inline text-sm text-muted-foreground">Accident Details</span>
+                                  </>
+                                )}
+                              </Button>
                             </div>
                             
-                            {/* Basic Lead Info */}
+                            {/* Basic Lead Info (simplified) */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
                               <div>
                                 <span className="font-medium">Phone:</span> {lead.phone_number || 'N/A'}
                               </div>
                               <div>
-                                <span className="font-medium">Lead Source:</span> {lead.call_results[0]?.call_source || 'N/A'}
+                                <span className="font-medium">Email:</span> {lead.email || 'N/A'}
                               </div>
                               <div>
-                                <span className="font-medium">Coverage:</span> ${lead.coverage_amount?.toLocaleString() || 'N/A'}
+                                <span className="font-medium">City / State:</span> {lead.city || 'N/A'}{lead.city && lead.state ? `, ${lead.state}` : ''}
                               </div>
                               <div>
-                                <span className="font-medium">Premium:</span> ${lead.monthly_premium?.toLocaleString() || 'N/A'}
+                                <span className="font-medium">DOB / Age:</span> {lead.date_of_birth ? format(new Date(lead.date_of_birth), 'MMM dd, yyyy') : 'N/A'}{lead.age ? ` (${lead.age})` : ''}
                               </div>
                               <div>
-                                <span className="font-medium">Date:</span>{' '}
-                                {lead.created_at ? format(new Date(lead.created_at), 'MMM dd, yyyy') : 'N/A'}
-                              </div>
-                              <div>
-                                <span className="font-medium">Draft Date:</span>{' '}
-                                {lead.call_results[0]?.draft_date ? format(new Date(lead.call_results[0].draft_date), 'MMM dd, yyyy') : 'N/A'}
+                                <span className="font-medium">Driver License:</span> {lead.driver_license || 'N/A'}
                               </div>
                             </div>
+
+                            {/* Accident / Incident Details (collapsible) */}
+                            {expandedCards[lead.id] && (
+                              <div className="border-t pt-3">
+                                <h4 className="font-medium text-sm mb-2">Accident Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                                  <div><span className="font-medium">Accident Date:</span> {lead.accident_date ? format(new Date(lead.accident_date), 'MMM dd, yyyy') : 'N/A'}</div>
+                                  <div><span className="font-medium">Location:</span> {lead.accident_location || 'N/A'}</div>
+                                  <div className="md:col-span-2"><span className="font-medium">Scenario:</span> {lead.accident_scenario || 'N/A'}</div>
+                                  <div><span className="font-medium">Injuries:</span> {lead.injuries || 'N/A'}</div>
+                                  <div><span className="font-medium">Medical Attention:</span> {lead.medical_attention || 'N/A'}</div>
+                                  <div><span className="font-medium">Police Attended:</span> {lead.police_attended === null ? 'N/A' : (lead.police_attended ? 'Yes' : 'No')}</div>
+                                  <div><span className="font-medium">Insured:</span> {lead.insured === null ? 'N/A' : (lead.insured ? 'Yes' : 'No')}</div>
+                                  <div><span className="font-medium">Passengers:</span> {lead.passengers_count ?? 'N/A'}</div>
+                                  <div><span className="font-medium">Vehicle Reg #:</span> {lead.vehicle_registration || 'N/A'}</div>
+                                  <div><span className="font-medium">Insurance Co.:</span> {lead.insurance_company || 'N/A'}</div>
+                                  <div><span className="font-medium">Third Party Reg #:</span> {lead.third_party_vehicle_registration || 'N/A'}</div>
+                                  <div><span className="font-medium">Other Party Admitted Fault:</span> {lead.other_party_admit_fault === null ? 'N/A' : (lead.other_party_admit_fault ? 'Yes' : 'No')}</div>
+                                  <div className="md:col-span-2"><span className="font-medium">Prior Attorney:</span> {lead.prior_attorney_involved ? `Yes — ${lead.prior_attorney_details || ''}` : 'No'}</div>
+                                  <div className="md:col-span-2"><span className="font-medium">Contact:</span> {lead.contact_name ? `${lead.contact_name} (${lead.contact_number || 'N/A'}) — ${lead.contact_address || 'N/A'}` : 'N/A'}</div>
+                                </div>
+                              </div>
+                            )}
 
                             {/* Call Result Details */}
                             {lead.call_results.length > 0 && (
@@ -1127,12 +894,7 @@ const Dashboard = () => {
                 </>
               )}
             </div>
-          </TabsContent>
-
-          <TabsContent value="verification">
-            <VerificationDashboard />
-          </TabsContent>
-        </Tabs>
+        </div>
       </div>
       
       {/* Claim Call Modals */}

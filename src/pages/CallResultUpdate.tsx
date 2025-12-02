@@ -27,27 +27,26 @@ interface Lead {
   birth_state?: string;
   social_security: string;
   driver_license?: string;
-  existing_coverage?: string;
-  previous_applications?: string;
-  height?: string;
-  weight?: string;
-  doctors_name?: string;
-  tobacco_use?: string;
-  health_conditions: string;
-  medications?: string;
-  carrier: string;
-  product_type: string;
-  coverage_amount: number;
-  monthly_premium: number;
-  draft_date: string;
-  future_draft_date?: string;
-  beneficiary_information?: string;
-  institution_name?: string;
-  beneficiary_routing: string;
-  beneficiary_account: string;
-  account_type?: string;
   additional_notes: string;
   lead_vendor?: string;
+  // Accident/Incident fields
+  accident_date?: string;
+  accident_location?: string;
+  accident_scenario?: string;
+  injuries?: string;
+  medical_attention?: string;
+  police_attended?: boolean;
+  insured?: boolean;
+  vehicle_registration?: string;
+  insurance_company?: string;
+  third_party_vehicle_registration?: string;
+  other_party_admit_fault?: boolean;
+  passengers_count?: number;
+  prior_attorney_involved?: boolean;
+  prior_attorney_details?: string;
+  contact_name?: string;
+  contact_number?: string;
+  contact_address?: string;
 }
 
 const CallResultUpdate = () => {
