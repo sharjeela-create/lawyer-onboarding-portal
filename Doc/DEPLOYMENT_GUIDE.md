@@ -1,5 +1,5 @@
 # Namecheap Shared Hosting Deployment Guide
-## Crash Guard Agents Portal
+## Crash Guard Closers Portal
 
 ### 📋 Prerequisites Checklist
 - ✅ Namecheap Shared Hosting with cPanel access
@@ -34,7 +34,7 @@ You have two options:
 1. **Create a ZIP file:**
    ```powershell
    # Navigate to project root
-   cd "C:\Users\Z C\Desktop\Crash Guard\Agents-Portal"
+   cd "C:\Users\Z C\Desktop\Crash Guard\Closers-Portal"
    
    # Create deployment package
    Compress-Archive -Path dist\*, .htaccess -DestinationPath agents-portal-deploy.zip -Force

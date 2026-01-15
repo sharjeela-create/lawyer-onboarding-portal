@@ -75,7 +75,7 @@ Based on real data query:
 │           │  Filters & Overview Stats   │
 │  Sidebar  │                             │
 │           ├─────────────────────────────┤
-│  - Agents │  ┌──────────────────────┐  │
+│  - Closers │  ┌──────────────────────┐  │
 │  - Vendors│  │ Policy Placements   │  │
 │  - Daily  │  │ Call Transfers      │  │
 │  - Carrier│  └──────────────────────┘  │

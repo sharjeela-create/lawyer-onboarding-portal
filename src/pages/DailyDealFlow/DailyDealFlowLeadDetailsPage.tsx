@@ -334,7 +334,7 @@ const DailyDealFlowLeadDetailsPage = () => {
           <div className="overflow-x-auto">
             <TabsList className="justify-start">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="agents">Agents</TabsTrigger>
+              <TabsTrigger value="agents">Closers</TabsTrigger>
               <TabsTrigger value="policy">Policy</TabsTrigger>
               <TabsTrigger value="accident">Accident</TabsTrigger>
               <TabsTrigger value="integrations">Integrations</TabsTrigger>

@@ -413,7 +413,7 @@ export const AgentActivityDashboard = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-600">Buffer Agents</p>
+                <p className="text-sm font-medium text-blue-600">Buffer Closers</p>
                 <p className="text-2xl font-bold text-blue-700">{stats.total_buffer_agents}</p>
               </div>
               <Users className="h-8 w-8 text-blue-500" />
@@ -425,7 +425,7 @@ export const AgentActivityDashboard = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600">Licensed Agents</p>
+                <p className="text-sm font-medium text-purple-600">Closers</p>
                 <p className="text-2xl font-bold text-purple-700">{stats.total_licensed_agents}</p>
               </div>
               <UserCheck className="h-8 w-8 text-purple-500" />
@@ -437,7 +437,7 @@ export const AgentActivityDashboard = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600">Agents in Call</p>
+                <p className="text-sm font-medium text-green-600">Closers in Call</p>
                 <p className="text-2xl font-bold text-green-700">{stats.agents_in_call}</p>
               </div>
               <Phone className="h-8 w-8 text-green-500" />
@@ -483,12 +483,12 @@ export const AgentActivityDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Buffer Agents */}
+        {/* Buffer Closers */}
         <Card className="bg-gradient-to-b from-blue-50 to-white">
           <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Buffer Agents ({bufferAgents.length})
+              Buffer Closers ({bufferAgents.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
@@ -541,17 +541,17 @@ export const AgentActivityDashboard = () => {
               currentPage={bufferAgentsPage}
               totalItems={bufferAgents.length}
               onPageChange={setBufferAgentsPage}
-              title="Buffer Agents"
+              title="Buffer Closers"
             />
           </CardContent>
         </Card>
 
-        {/* Licensed Agents */}
+        {/* Closers */}
         <Card className="bg-gradient-to-b from-purple-50 to-white">
           <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
             <CardTitle className="flex items-center gap-2">
               <UserCheck className="h-5 w-5" />
-              Licensed Agents ({licensedAgents.length})
+              Closers ({licensedAgents.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
@@ -602,7 +602,7 @@ export const AgentActivityDashboard = () => {
               currentPage={licensedAgentsPage}
               totalItems={licensedAgents.length}
               onPageChange={setLicensedAgentsPage}
-              title="Licensed Agents"
+              title="Closers"
             />
           </CardContent>
         </Card>

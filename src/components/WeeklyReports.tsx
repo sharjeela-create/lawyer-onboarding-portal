@@ -428,7 +428,7 @@ export const WeeklyReports = ({ className }: WeeklyReportsProps) => {
               <p>• Each vendor gets a separate Excel file</p>
               <p>• All files will be packaged in a ZIP file</p>
               <p>• Premium vendors include MP and Face Amount columns</p>
-              <p>• Includes: Date, Name, Agents, Status, Carrier, Product Type, Draft Date, Notes</p>
+              <p>• Includes: Date, Name, Closers, Status, Carrier, Product Type, Draft Date, Notes</p>
             </div>
           </div>
 

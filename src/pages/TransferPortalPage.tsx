@@ -1,9 +1,19 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, RefreshCw, Download } from "lucide-react";
+import { ArrowLeftRight, BarChart3, Loader2, RefreshCw, TrendingUp } from "lucide-react";
 
 export interface TransferPortalRow {
   id: string;
@@ -33,17 +43,78 @@ export interface TransferPortalRow {
   source_type?: string;
 }
 
+const kanbanStages = [
+  { key: "transfer_api", label: "Transfer API" },
+  { key: "incomplete_transfer", label: "Incomplete Transfer" },
+  { key: "returned_to_center_dq", label: "Returned To Center - DQ" },
+  { key: "previously_sold_bpo", label: "Previously Sold BPO" },
+  { key: "needs_bpo_callback", label: "Needs BPO Callback" },
+  { key: "application_withdrawn", label: "Application Withdrawn" },
+  { key: "pending_information", label: "Pending Information" },
+  { key: "pending_approval", label: "Pending Approval" },
+] as const;
+
+type StageKey = (typeof kanbanStages)[number]["key"];
+
+const stageSlugMap: Record<string, StageKey> = {
+  transfer_api: "transfer_api",
+  transferapi: "transfer_api",
+  incomplete_transfer: "incomplete_transfer",
+  incompletetransfer: "incomplete_transfer",
+  returned_to_center_dq: "returned_to_center_dq",
+  returned_to_center___dq: "returned_to_center_dq",
+  returned_to_center: "returned_to_center_dq",
+  previously_sold_bpo: "previously_sold_bpo",
+  previouslysoldbpo: "previously_sold_bpo",
+  needs_bpo_callback: "needs_bpo_callback",
+  needsbpocallback: "needs_bpo_callback",
+  application_withdrawn: "application_withdrawn",
+  applicationwithdrawn: "application_withdrawn",
+  pending_information: "pending_information",
+  pendinginformation: "pending_information",
+  pending_info: "pending_information",
+  pending_approval: "pending_approval",
+  pendingapproval: "pending_approval",
+};
+
+const formatCurrency = (value: number) => {
+  if (!value) return "$0";
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(value);
+  } catch (error) {
+    console.error("Error formatting currency", error);
+    return `$${value}`;
+  }
+};
+
+const deriveStageKey = (row: TransferPortalRow): StageKey => {
+  const source = (row.status || row.call_result || "transfer_api").toLowerCase();
+  const slug = source
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/_{2,}/g, "_")
+    .replace(/^_|_$/g, "");
+
+  return stageSlugMap[slug] ?? "transfer_api";
+};
+
 const TransferPortalPage = () => {
   const [data, setData] = useState<TransferPortalRow[]>([]);
   const [filteredData, setFilteredData] = useState<TransferPortalRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [allTimeTransfers, setAllTimeTransfers] = useState(0);
   const [dateFilter, setDateFilter] = useState<string>("");
   const [sourceTypeFilter, setSourceTypeFilter] = useState("__ALL__");
   const [showDuplicates, setShowDuplicates] = useState(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [selectedStage, setSelectedStage] = useState<"all" | StageKey>("all");
 
   // Remove duplicates based on insured_name, client_phone_number, and lead_vendor
   const removeDuplicates = (records: TransferPortalRow[]): TransferPortalRow[] => {
@@ -105,27 +176,29 @@ const TransferPortalPage = () => {
     try {
       setRefreshing(true);
 
-      // Query the view directly - TypeScript will complain but it works at runtime
-      let query = (supabase as any)
-        .from('transfer_portal')
+      const pendingApprovalStatus = "pending approval";
+
+      let transfersQuery = supabase
+        .from('daily_deal_flow')
         .select('*')
+        .neq('status', pendingApprovalStatus)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false });
 
-      // Apply date filter if set - using direct date string to avoid timezone conversion issues
       if (dateFilter) {
-        query = query.eq('date', dateFilter);
+        transfersQuery = transfersQuery.eq('date', dateFilter);
       }
 
-      // Apply source type filter
-      if (sourceTypeFilter !== "__ALL__") {
-        query = query.eq('source_type', sourceTypeFilter);
-      }
+      const [transfersRes, transfersCountRes] = await Promise.all([
+        transfersQuery,
+        supabase
+          .from('daily_deal_flow')
+          .select('*', { count: 'exact', head: true })
+          .neq('status', pendingApprovalStatus),
+      ]);
 
-      const { data: portalData, error } = await query;
-
-      if (error) {
-        console.error("Error fetching transfer portal data:", error);
+      if (transfersRes.error) {
+        console.error("Error fetching transfer portal data:", transfersRes.error);
         toast({
           title: "Error",
           description: "Failed to fetch transfer portal data",
@@ -134,7 +207,21 @@ const TransferPortalPage = () => {
         return;
       }
 
-      setData((portalData as TransferPortalRow[]) || []);
+      setAllTimeTransfers(transfersCountRes.count ?? 0);
+
+      const transferRows = ((transfersRes.data ?? []) as unknown as TransferPortalRow[]).map((row) => {
+        const isCallback = Boolean((row as any).from_callback) || Boolean((row as any).is_callback);
+        return {
+          ...row,
+          source_type: isCallback ? 'callback' : 'zapier',
+        };
+      });
+
+      setData(transferRows);
+
+      if (sourceTypeFilter !== "__ALL__") {
+        setData(transferRows.filter((row) => row.source_type === sourceTypeFilter));
+      }
 
       if (showRefreshToast) {
         toast({
@@ -162,10 +249,33 @@ const TransferPortalPage = () => {
   }, [data, dateFilter, sourceTypeFilter, showDuplicates, searchTerm]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const stageFilteredData = useMemo(() => {
+    if (selectedStage === "all") return filteredData;
+    return filteredData.filter((row) => deriveStageKey(row) === selectedStage);
+  }, [filteredData, selectedStage]);
+
+  const totalPages = Math.max(1, Math.ceil(stageFilteredData.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentPageData = filteredData.slice(startIndex, endIndex);
+  const currentPageData = stageFilteredData.slice(startIndex, endIndex);
+
+  const totalVolume = useMemo(() => {
+    return stageFilteredData.reduce((sum, row) => sum + (row.monthly_premium ?? 0), 0);
+  }, [stageFilteredData]);
+
+  const averageVolume = stageFilteredData.length
+    ? Math.round(totalVolume / stageFilteredData.length)
+    : 0;
+
+  const leadsByStage = useMemo(() => {
+    const grouped = new Map<StageKey, TransferPortalRow[]>();
+    kanbanStages.forEach((stage) => grouped.set(stage.key, []));
+    stageFilteredData.forEach((row) => {
+      const stageKey = deriveStageKey(row);
+      grouped.get(stageKey)?.push(row);
+    });
+    return grouped;
+  }, [stageFilteredData]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -192,8 +302,7 @@ const TransferPortalPage = () => {
   };
 
   const handleExport = () => {
-    // Simple CSV export
-    if (filteredData.length === 0) {
+    if (stageFilteredData.length === 0) {
       toast({
         title: "No Data",
         description: "No data to export",
@@ -225,7 +334,7 @@ const TransferPortalPage = () => {
 
     const csvContent = [
       headers.join(','),
-      ...filteredData.map(row => [
+      ...stageFilteredData.map(row => [
         row.submission_id,
         row.date || '',
         row.insured_name || '',
@@ -276,245 +385,274 @@ const TransferPortalPage = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Analytics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Transfers</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Transfers
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{filteredData.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  {dateFilter ? `For ${dateFilter}` : 'All time'}
-                  {!showDuplicates && data.length !== filteredData.length && ' (duplicates removed)'}
-                  {filteredData.length > itemsPerPage && (
-                    <span className="block">
-                      Showing {startIndex + 1}-{Math.min(endIndex, filteredData.length)} of {filteredData.length}
-                    </span>
-                  )}
-                </p>
+              <CardContent className="flex items-center justify-between">
+                <div className="text-3xl font-semibold">{allTimeTransfers}</div>
+                <ArrowLeftRight className="h-10 w-10 text-primary" />
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Completed Transfers</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Volume
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {filteredData.filter(row => row.status && row.status.trim() !== '').length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Transfers with status set
-                </p>
+              <CardContent className="flex items-center justify-between">
+                <div className="text-3xl font-semibold">{formatCurrency(totalVolume)}</div>
+                <TrendingUp className="h-10 w-10 text-primary" />
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Avg Volume
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {filteredData.length > 0
-                    ? Math.round((filteredData.filter(row => row.status && row.status.trim() !== '').length / filteredData.length) * 100)
-                    : 0}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Of filtered transfers
-                </p>
+              <CardContent className="flex items-center justify-between">
+                <div className="text-3xl font-semibold">{formatCurrency(averageVolume)}</div>
+                <BarChart3 className="h-10 w-10 text-primary" />
               </CardContent>
             </Card>
           </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-muted-foreground">
-                Track all daily lead transfers from Zapier and callbacks
-              </p>
+
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search transfers..."
+                className="w-64"
+              />
+              <Select value={selectedStage} onValueChange={(value) => {
+                setSelectedStage(value as "all" | StageKey);
+                setCurrentPage(1);
+              }}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="All Stages" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="all">All Stages</SelectItem>
+                    {kanbanStages.map((stage) => (
+                      <SelectItem key={stage.key} value={stage.key}>
+                        {stage.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleRefresh} disabled={refreshing}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button onClick={handleExport} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
+            <div className="flex items-center gap-3">
+              <div className="inline-flex rounded-lg border border-muted bg-background p-0.5">
+                {["kanban", "list"].map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
+                      viewMode === mode
+                        ? "bg-primary text-white shadow"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
+                    onClick={() => setViewMode(mode as "kanban" | "list")}
+                  >
+                    {mode === "kanban" ? "Kanban View" : "List View"}
+                  </button>
+                ))}
+              </div>
+              <Badge variant="secondary" className="px-3 py-1">
+                {allTimeTransfers} transfers
+              </Badge>
+              <Button variant="outline" onClick={handleExport}>
                 Export CSV
               </Button>
+              <Button onClick={handleRefresh} disabled={refreshing}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
             </div>
           </div>
 
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Search</label>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name, phone, vendor..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-muted-foreground">
+                Track all daily lead transfers from Zapier and callbacks
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-muted-foreground">
+                    Date
+                  </label>
+                  <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-muted-foreground">
+                    Source Type
+                  </label>
+                  <Select value={sourceTypeFilter} onValueChange={(value) => setSourceTypeFilter(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Sources" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="__ALL__">All Sources</SelectItem>
+                        <SelectItem value="zapier">Zapier</SelectItem>
+                        <SelectItem value="callback">Callback</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-muted-foreground">
+                    Show Duplicates
+                  </label>
+                  <Select
+                    value={showDuplicates ? "true" : "false"}
+                    onValueChange={(value) => setShowDuplicates(value === "true")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="true">Show All Records</SelectItem>
+                        <SelectItem value="false">Remove Duplicates</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Date</label>
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Source Type</label>
-                <select
-                  value={sourceTypeFilter}
-                  onChange={(e) => setSourceTypeFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="__ALL__">All Sources</option>
-                  <option value="zapier">Zapier</option>
-                  <option value="callback">Callback</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Show Duplicates</label>
-                <select
-                  value={showDuplicates ? "true" : "false"}
-                  onChange={(e) => setShowDuplicates(e.target.value === "true")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="true">Show All Records</option>
-                  <option value="false">Remove Duplicates</option>
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Data Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Transfer Records ({filteredData.length})
-              {filteredData.length > itemsPerPage && (
-                <span className="text-sm font-normal text-muted-foreground ml-2">
-                  Page {currentPage} of {totalPages} • Showing {startIndex + 1}-{Math.min(endIndex, filteredData.length)}
-                </span>
-              )}
-              {!showDuplicates && data.length !== filteredData.length && (
-                <span className="text-sm font-normal text-muted-foreground ml-2">
-                  ({data.length - filteredData.length} duplicates removed)
-                </span>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {filteredData.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No transfer records found for the selected filters.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      
-                      <th className="text-left p-2">Date</th>
-                      <th className="text-left p-2">Lead Vendor</th>
-                      <th className="text-left p-2">Insured Name</th>
-                      
-                      <th className="text-left p-2">Phone</th>
-                      <th className="text-left p-2">Source</th>
-                      <th className="text-left p-2">Status</th>
-                
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentPageData.map((row) => (
-                      <tr key={row.id} className="border-b hover:bg-gray-50">
-                        
-                        <td className="p-2">{row.date}</td>
-                        <td className="p-2">{row.lead_vendor}</td>
-                        <td className="p-2">{row.insured_name}</td>
-                        <td className="p-2">{row.client_phone_number}</td>
-                        <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            row.source_type === 'callback'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {row.source_type}
-                          </span>
-                        </td>
-                        <td className="p-2">{row.status}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} entries
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevPage}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              
-              {/* Page Numbers */}
-              <div className="flex gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  
+          {viewMode === "kanban" ? (
+            <div className="mt-4 min-h-0 flex-1 overflow-auto">
+              <div className="flex min-h-0 min-w-[2200px] gap-3 pr-2">
+                {kanbanStages.map((stage) => {
+                  const rows = leadsByStage.get(stage.key) || [];
                   return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handlePageChange(pageNum)}
-                      className="w-8 h-8 p-0"
-                    >
-                      {pageNum}
-                    </Button>
+                    <Card key={stage.key} className="flex min-h-[560px] w-[26rem] flex-col bg-muted/20">
+                      <CardHeader className="flex flex-row items-center justify-between border-b px-3 py-2">
+                        <CardTitle className="text-sm font-semibold">
+                          {stage.label}
+                        </CardTitle>
+                        <Badge variant="secondary">{rows.length}</Badge>
+                      </CardHeader>
+                      <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+                        {rows.length === 0 ? (
+                          <div className="rounded-md border border-dashed border-muted-foreground/30 px-3 py-6 text-center text-xs text-muted-foreground">
+                            No leads
+                          </div>
+                        ) : (
+                          rows.map((row) => (
+                            <Card key={row.id} className="w-full" >
+                              <CardContent className="p-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="truncate text-sm font-semibold">{row.insured_name || "Unnamed"}</div>
+                                    <div className="mt-0.5 text-xs text-muted-foreground">
+                                      {(row.submission_id || row.id)?.toUpperCase()} · {row.client_phone_number || "N/A"}
+                                    </div>
+                                  </div>
+                                  <div className="shrink-0 text-sm font-semibold">{formatCurrency(row.monthly_premium ?? 0)}</div>
+                                </div>
+                                <div className="mt-2 flex items-center justify-between gap-2">
+                                  <Badge variant="secondary" className="text-xs">{row.lead_vendor || "Unknown"}</Badge>
+                                  <div className="text-xs text-muted-foreground">{row.date || ""}</div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
                   );
                 })}
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </Button>
             </div>
-          </div>
-        )}
+          ) : (
+            <Card>
+              <CardHeader className="border-b">
+                <CardTitle className="text-base font-semibold">
+                  Transfers ({stageFilteredData.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {stageFilteredData.length === 0 ? (
+                  <div className="py-10 text-center text-muted-foreground">
+                    No transfer records found for the selected filters.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                          <th className="px-4 py-3">Transfer</th>
+                          <th className="px-4 py-3">Client</th>
+                          <th className="px-4 py-3">Phone</th>
+                          <th className="px-4 py-3">Stage</th>
+                          <th className="px-4 py-3">Volume</th>
+                          <th className="px-4 py-3">Publisher</th>
+                          <th className="px-4 py-3">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentPageData.map((row) => {
+                          const stageKey = deriveStageKey(row);
+                          const stageLabel = kanbanStages.find((stage) => stage.key === stageKey)?.label;
+                          return (
+                            <tr key={row.id} className="border-b last:border-0">
+                              <td className="px-4 py-3 font-semibold">
+                                {row.submission_id || row.id}
+                              </td>
+                              <td className="px-4 py-3">{row.insured_name || "Unnamed"}</td>
+                              <td className="px-4 py-3">{row.client_phone_number || "N/A"}</td>
+                              <td className="px-4 py-3">
+                                <Badge variant="outline">{stageLabel}</Badge>
+                              </td>
+                              <td className="px-4 py-3 font-semibold">
+                                {formatCurrency(row.monthly_premium ?? 0)}
+                              </td>
+                              <td className="px-4 py-3">{row.lead_vendor || "Unknown"}</td>
+                              <td className="px-4 py-3">{row.date || ""}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {stageFilteredData.length > itemsPerPage && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-sm">
+                    <span>
+                      Page {currentPage} of {totalPages} • Showing {startIndex + 1}-{Math.min(endIndex, stageFilteredData.length)}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={currentPage === 1}>
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

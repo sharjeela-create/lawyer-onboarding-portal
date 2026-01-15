@@ -1,7 +1,7 @@
-# Crash Guard Automation Agents Portal
+# Crash Guard Automation Closers Portal
 
 ## Overview
-The Crash Guard Automation Agents Portal is a web application designed to streamline insurance lead verification workflows for agents. It supports both Buffer-to-Licensed Agent and Direct Licensed Agent processes, integrates with Supabase for backend operations, and automates notifications and Google Sheets updates for lead management.
+The Crash Guard Automation Closers Portal is a web application designed to streamline insurance lead verification workflows for agents. It supports both Buffer-to-Licensed Agent and Direct Licensed Agent processes, integrates with Supabase for backend operations, and automates notifications and Google Sheets updates for lead management.
 
 ---
 
@@ -11,7 +11,7 @@ The Crash Guard Automation Agents Portal is a web application designed to stream
 - **Buffer Agent Workflow**: Buffer agents initiate verification sessions, handle call drops, and transfer leads to licensed agents.
 - **Licensed Agent Workflow**: Licensed agents can claim transferred leads, handle direct verifications, and process dropped calls.
 - **Session Statuses**: Real-time status updates including `in_progress`, `call_dropped`, `buffer_done`, `transferred`, `ready_for_transfer`, `la_done`.
-- **Claiming Mechanism**: Agents can claim dropped or transferred calls via dashboard modals.
+- **Claiming Mechanism**: Closers can claim dropped or transferred calls via dashboard modals.
 - **Audit & Tracking**: All status changes are tracked and auditable in the database.
 
 ### 2. Dashboard & UI
@@ -26,7 +26,7 @@ The Crash Guard Automation Agents Portal is a web application designed to stream
 - **Supabase Functions**: Serverless functions handle notification logic and payload formatting.
 
 ### 4. New Callback Feature
-- **Manual Lead Entry**: Agents can create new leads from the dashboard.
+- **Manual Lead Entry**: Closers can create new leads from the dashboard.
 - **Google Sheets Sync**: New callback entries are inserted at the top of the sheet, with all required and optional fields mapped.
 - **Unique Submission IDs**: Callback entries use `CB{timestamp}{random}` format.
 - **Seamless Workflow**: Callback leads are processed through the same call result form as regular leads.
@@ -40,7 +40,7 @@ The Crash Guard Automation Agents Portal is a web application designed to stream
 
 ## File Structure
 ```
-Agents-Portal/
+Closers-Portal/
 ├── src/
 │   ├── App.tsx
 │   ├── main.tsx

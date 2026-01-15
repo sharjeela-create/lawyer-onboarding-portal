@@ -20,7 +20,7 @@ export const AnalyticsSidebar = ({ activeTab, onTabChange }: AnalyticsSidebarPro
         onClick={() => onTabChange('agents')}
       >
         <Users className="h-4 w-4 mr-2" />
-        Agents Performance
+        Closers Performance
       </Button>
 
       <Button

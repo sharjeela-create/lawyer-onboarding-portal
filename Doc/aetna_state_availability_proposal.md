@@ -18,7 +18,7 @@ Create a separate state availability system for Aetna that:
 5. **`carrier_override_states`** (102 rows) - Defines carrier/state combos requiring upline
 6. **`agent_upline_hierarchy`** (4 rows) - Tracks upline relationships
 
-### Current Agents:
+### Current Closers:
 - **Abdul** - 8 carriers, 37 states
 - **Benjamin** - 1 carrier, 40 states
 - **Isaac** - 8 carriers, 40 states
@@ -84,8 +84,8 @@ CREATE POLICY "Admins have full access to Aetna availability"
     )
   );
 
--- Agents can view their own availability
-CREATE POLICY "Agents can view own Aetna availability"
+-- Closers can view their own availability
+CREATE POLICY "Closers can view own Aetna availability"
   ON aetna_agent_state_availability
   FOR SELECT
   TO authenticated
@@ -254,7 +254,7 @@ BEGIN
   AND awu.state_available = true
   AND (awu.upline_has_aetna AND awu.upline_has_state) = true
   ORDER BY 
-    CASE WHEN awu.upline_name IS NULL THEN 0 ELSE 1 END, -- Agents without uplines first
+    CASE WHEN awu.upline_name IS NULL THEN 0 ELSE 1 END, -- Closers without uplines first
     awu.agent_name;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

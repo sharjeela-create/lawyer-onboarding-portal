@@ -20,7 +20,7 @@ The Aetna state availability system has been fully integrated into the frontend 
 2. Select "Aetna" carrier
 3. Notice blue alert appears explaining special requirements
 4. Select any state (e.g., "California", "Texas")
-5. Click "Search for Eligible Agents"
+5. Click "Search for Eligible Closers"
 6. Should return agents with Aetna license + state availability + upline approval
 
 ### 2. AgentEligibilityPage
@@ -34,11 +34,11 @@ The Aetna state availability system has been fully integrated into the frontend 
 
 **Test Scenario:**
 1. Navigate to: http://localhost:8080/agent-eligibility
-2. Scroll to "Find Eligible Agents" section
+2. Scroll to "Find Eligible Closers" section
 3. Select "Aetna" from carrier dropdown
 4. Blue alert appears explaining Aetna special requirements
 5. Select a state
-6. Click "Search for Eligible Agents"
+6. Click "Search for Eligible Closers"
 7. Results show eligible agents based on Aetna state availability table
 
 ### 3. NEW: AetnaStateAvailabilityManager Component
@@ -69,7 +69,7 @@ The Aetna state availability system has been fully integrated into the frontend 
 
 **Updates:**
 - Added Tabs component with two tabs:
-  - "Find Eligible Agents" (original functionality)
+  - "Find Eligible Closers" (original functionality)
   - "Aetna States" (NEW - Aetna state availability manager)
 - Updated page title to "Agent Licensing & Eligibility"
 
@@ -96,7 +96,7 @@ The Aetna state availability system has been fully integrated into the frontend 
 
 ## Test Scenarios
 
-### Test 1: Search for California Aetna Agents
+### Test 1: Search for California Aetna Closers
 **Expected Results:**
 - Benjamin ✅ (has CA = YES)
 - Tatumn ✅ (has CA = YES)
@@ -105,14 +105,14 @@ The Aetna state availability system has been fully integrated into the frontend 
 - Isaac ✅ (has CA = YES, upline Abdul has CA = NO, but Isaac himself has CA = YES)
 - Zack ❌ (has CA = NO)
 
-### Test 2: Search for Texas Aetna Agents
+### Test 2: Search for Texas Aetna Closers
 **Expected Results:**
 - All 6 agents should appear (all have TX = YES)
 - Benjamin, Tatumn, Abdul as top-level
 - Lydia via upline Benjamin
 - Isaac, Zack via upline Abdul
 
-### Test 3: Search for Alaska Aetna Agents
+### Test 3: Search for Alaska Aetna Closers
 **Expected Results:**
 - Lydia ✅ (has AK = YES)
 - Abdul ✅ (has AK = YES)
@@ -127,7 +127,7 @@ The Aetna state availability system has been fully integrated into the frontend 
 3. Click "Enable Aetna License"
 4. Configure states (select/deselect as needed)
 5. Click "Save Aetna State Availability"
-6. Go to "Find Eligible Agents" tab
+6. Go to "Find Eligible Closers" tab
 7. Search for a state you enabled
 8. New agent should appear in results
 
@@ -136,7 +136,7 @@ The Aetna state availability system has been fully integrated into the frontend 
 2. Select "Lydia"
 3. Toggle "California" from NO to YES
 4. Save changes
-5. Go to "Find Eligible Agents" tab
+5. Go to "Find Eligible Closers" tab
 6. Search for Aetna + California
 7. Lydia should now appear in results (was blocked before)
 

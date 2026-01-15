@@ -234,7 +234,7 @@ Result: 5 tables, all synchronized ✅
 
 ## 📞 Support Documentation
 
-### For Agents:
+### For Closers:
 - **RETENTION_QUICK_START.md** - How to use retention toggles
 
 ### For Developers:
@@ -302,7 +302,7 @@ Result: 5 tables, all synchronized ✅
    - Agent can still see and verify
 
 3. **Override Capability:** Flexibility in workflow
-   - Agents can correct misclassifications
+   - Closers can correct misclassifications
    - Status can change during call
    - Flag still tracks accurately
 

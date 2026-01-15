@@ -313,7 +313,7 @@ export const GHLExport = ({ className }: GHLExportProps) => {
               <p>• Contains all 18 required GHL columns</p>
               <p>• Missing columns filled with "N/A"</p>
               <p>• CSV format compatible with Excel</p>
-              <p>• Includes: Phone, Lead Vendor, Agents, Status, Carrier, etc.</p>
+              <p>• Includes: Phone, Lead Vendor, Closers, Status, Carrier, etc.</p>
             </div>
           </div>
 

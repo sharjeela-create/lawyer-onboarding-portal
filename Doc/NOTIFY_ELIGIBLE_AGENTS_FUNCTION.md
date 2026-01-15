@@ -1,4 +1,4 @@
-# Notify Eligible Agents Edge Function
+# Notify Eligible Closers Edge Function
 
 ## Overview
 This Supabase Edge Function sends Slack notifications to center channels, tagging all agents who are licensed to handle a specific lead based on carrier and state requirements.
@@ -103,7 +103,7 @@ curl -X POST 'https://your-project.supabase.co/functions/v1/notify-eligible-agen
 
 ## Slack Message Format
 
-### With Eligible Agents
+### With Eligible Closers
 ```
 🔔 New Lead Available
 
@@ -114,7 +114,7 @@ State: Alabama
 
 ─────────────────────
 
-Agents who can take this call:
+Closers who can take this call:
 
 • @Benjamin (Benjamin)
 • @Lydia (Lydia)
@@ -123,7 +123,7 @@ Agents who can take this call:
 Submission ID: SUB-12345 • 3 eligible agent(s)
 ```
 
-### No Eligible Agents
+### No Eligible Closers
 ```
 🚨 New Lead Available
 
@@ -261,7 +261,7 @@ await supabase.functions.invoke('notify-eligible-agents', {
 
 Expected: Should tag Ben, Lydia, and Noah (all licensed for Liberty Bankers in Arizona)
 
-### Test with No Eligible Agents
+### Test with No Eligible Closers
 ```typescript
 await supabase.functions.invoke('notify-eligible-agents', {
   body: {
@@ -290,7 +290,7 @@ supabase functions deploy notify-eligible-agents
 2. **Test the Function**: Use the testing examples above
 3. **Integrate into Lead Creation Flow**: Add function calls wherever new leads are created
 4. **Monitor Logs**: Check Supabase function logs for any errors
-5. **Add More Agents**: Update the `agentSlackIdMapping` when new agents are added
+5. **Add More Closers**: Update the `agentSlackIdMapping` when new agents are added
 
 ## Support
 

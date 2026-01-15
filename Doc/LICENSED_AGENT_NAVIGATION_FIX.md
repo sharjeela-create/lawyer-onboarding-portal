@@ -71,7 +71,7 @@ AND status = 'Pending Approval';
 2. `src/pages/CommissionPortal.tsx` - Replaced custom header with NavigationHeader
 3. `src/components/ProtectedRoute.tsx` - Skip center check for licensed agents (already done)
 
-## How to Add More Licensed Agents
+## How to Add More Closers
 Simply insert a record in the `agent_status` table:
 ```sql
 INSERT INTO agent_status (user_id, status, agent_type)

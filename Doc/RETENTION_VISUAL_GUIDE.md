@@ -396,7 +396,7 @@ Retention Call Dashboard
 │   ├─ Commission comparison
 │   └─ Call volume trends
 │
-└─ Top Retention Agents
+└─ Top Retention Closers
     ├─ By volume
     ├─ By success rate
     └─ By revenue generated

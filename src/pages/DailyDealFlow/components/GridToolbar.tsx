@@ -67,7 +67,7 @@ export const GridToolbar = ({
   const { leadVendors } = useCenters();
   // Filter options (these should match your database values)
   const licensedAgentOptions = [
-    "All Licensed Agents",
+    "All Closers",
     "Claudia",
     "Lydia",
     "Isaac",
@@ -320,11 +320,11 @@ export const GridToolbar = ({
           </Label>
           <Select value={licensedAgentFilter || ALL_OPTION} onValueChange={onLicensedAgentFilterChange}>
             <SelectTrigger className={cn("mt-1", licensedAgentFilter && licensedAgentFilter !== ALL_OPTION && "ring-2 ring-blue-200")}>
-              <SelectValue placeholder="All Licensed Agents" />
+              <SelectValue placeholder="All Closers" />
             </SelectTrigger>
             <SelectContent>
               {licensedAgentOptions.map((agent) => (
-                <SelectItem key={agent} value={agent === "All Licensed Agents" ? ALL_OPTION : agent}>
+                <SelectItem key={agent} value={agent === "All Closers" ? ALL_OPTION : agent}>
                   {agent}
                 </SelectItem>
               ))}

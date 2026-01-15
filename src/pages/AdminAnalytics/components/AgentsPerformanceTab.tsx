@@ -38,7 +38,7 @@ export const AgentsPerformanceTab = ({
           <CardTitle className="flex items-center space-x-2">
             <Users className="h-5 w-5" />
             <span>Agent Performance Overview</span>
-            <Badge variant="outline">{agentPerformance.length} Agents</Badge>
+            <Badge variant="outline">{agentPerformance.length} Closers</Badge>
           </CardTitle>
         </div>
       </CardHeader>

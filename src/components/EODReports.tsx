@@ -478,7 +478,7 @@ export const EODReports = ({ className }: EODReportsProps) => {
               <p>• All files will be packaged in a ZIP file</p>
               <p>• Data split into "BPO Transfers" and "Internal Callbacks" sections</p>
               <p>• Premium vendors include MP and Face Amount columns</p>
-              <p>• Includes: Date, Name, Agents, Status, Carrier, Product Type, Draft Date, Notes</p>
+              <p>• Includes: Date, Name, Closers, Status, Carrier, Product Type, Draft Date, Notes</p>
             </div>
           </div>
 

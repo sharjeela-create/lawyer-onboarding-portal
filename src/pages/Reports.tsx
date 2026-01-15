@@ -609,7 +609,7 @@ export const ReportsPage = () => {
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">{licensedTeamStats?.active_agents || 0}</div>
-                    <div className="text-sm text-muted-foreground">Active Agents</div>
+                    <div className="text-sm text-muted-foreground">Active Closers</div>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -633,7 +633,7 @@ export const ReportsPage = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">{retentionStats.length || 0}</div>
-                    <div className="text-sm text-muted-foreground">Active Agents</div>
+                    <div className="text-sm text-muted-foreground">Active Closers</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">
@@ -661,9 +661,9 @@ export const ReportsPage = () => {
           {/* Detailed Agent Stats */}
           <Tabs defaultValue="buffer" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="buffer">Buffer Agents</TabsTrigger>
-              <TabsTrigger value="licensed">Licensed Agents</TabsTrigger>
-              <TabsTrigger value="retention">Retention Agents</TabsTrigger>
+              <TabsTrigger value="buffer">Buffer Closers</TabsTrigger>
+              <TabsTrigger value="licensed">Closers</TabsTrigger>
+              <TabsTrigger value="retention">Retention Closers</TabsTrigger>
             </TabsList>
 
             <TabsContent value="buffer" className="space-y-4">

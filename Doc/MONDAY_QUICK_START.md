@@ -84,7 +84,7 @@ npm run dev
 - Check that you have permission to access the board
 - Try regenerating your API token in Monday.com
 
-## Step 7: Customize for Your Agents
+## Step 7: Customize for Your Closers
 
 Currently hardcoded for **Isaac Reed**. To change:
 

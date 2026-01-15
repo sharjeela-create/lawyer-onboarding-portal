@@ -128,7 +128,7 @@ export default function EligibleAgentFinder() {
 
       if (agentsList.length === 0) {
         toast({
-          title: 'No Eligible Agents Found',
+          title: 'No Eligible Closers Found',
           description: isAetna 
             ? `No agents are available for Aetna in ${stateName} (requires upline approval).`
             : `No agents are licensed for ${carrierName} in ${stateName}.`,
@@ -159,7 +159,7 @@ export default function EligibleAgentFinder() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            Find Eligible Agents
+            Find Eligible Closers
           </CardTitle>
           <CardDescription>
             Search for agents licensed to sell a specific carrier in a specific state
@@ -218,7 +218,7 @@ export default function EligibleAgentFinder() {
             ) : (
               <>
                 <Search className="mr-2 h-4 w-4" />
-                Search for Eligible Agents
+                Search for Eligible Closers
               </>
             )}
           </Button>

@@ -107,8 +107,8 @@ const toggleEntry = (entryId: string) => {
 ✅ **Status Visibility**: Understand current standing with carriers
 ✅ **Agent History**: See which agents worked with the lead previously
 
-### For Agents Receiving Requests
-✅ **Informed Callbacks**: Agents can review history before calling
+### For Closers Receiving Requests
+✅ **Informed Callbacks**: Closers can review history before calling
 ✅ **Pattern Recognition**: Identify recurring issues or opportunities
 ✅ **Continuity**: Better customer experience with context-aware conversations
 

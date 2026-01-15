@@ -113,9 +113,9 @@ AdminAnalytics/
    - User navigates to `/admin-analytics`
    - Page loads instantly (NO data fetch)
    - Sidebar and empty content area render immediately
-   - Default tab: "Agents" (marked as visited)
+   - Default tab: "Closers" (marked as visited)
 
-2. **First Tab Click (Agents/Vendors/Carriers)**:
+2. **First Tab Click (Closers/Vendors/Carriers)**:
    - React Query checks cache for `['admin-analytics-placements']`
    - If cache hit (< 5 min old): Use cached data instantly (no loading)
    - If cache miss: Show TabLoading component → Fetch from Monday.com → Cache result
@@ -123,7 +123,7 @@ AdminAnalytics/
 
 3. **Tab Switching**:
    - **Daily tab**: No data fetch needed (placeholder)
-   - **Agents/Vendors/Carriers tabs**: Use cached data (instant render)
+   - **Closers/Vendors/Carriers tabs**: Use cached data (instant render)
    - No loading screen on subsequent visits to same tabs
 
 4. **Manual Refresh**:

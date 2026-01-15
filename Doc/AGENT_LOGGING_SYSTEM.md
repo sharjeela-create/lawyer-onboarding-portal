@@ -2,7 +2,7 @@
 
 ## Overview
 
-This system provides comprehensive logging and reporting for agent performance tracking, including both Licensed Agents (LA) and Buffer Agents. It tracks every significant event in the verification and call result workflow to provide detailed analytics.
+This system provides comprehensive logging and reporting for agent performance tracking, including both Closers (LA) and Buffer Closers. It tracks every significant event in the verification and call result workflow to provide detailed analytics.
 
 ## Database Schema
 

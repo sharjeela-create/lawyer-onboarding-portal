@@ -86,7 +86,7 @@
 │  │  │ • Save changes                                 │      │    │
 │  │  └────────────────────────────────────────────────┘      │    │
 │  │                                                           │    │
-│  │  Tab 2: Find Agents                                      │    │
+│  │  Tab 2: Find Closers                                      │    │
 │  │  ┌────────────────────────────────────────────────┐      │    │
 │  │  │     EligibleAgentFinder Component              │      │    │
 │  │  ├────────────────────────────────────────────────┤      │    │
@@ -146,7 +146,7 @@ Success toast displayed
 Licenses are now saved in database
 ```
 
-### Flow 2: Finding Eligible Agents
+### Flow 2: Finding Eligible Closers
 
 ```
 User/System
@@ -233,7 +233,7 @@ Assignment is blocked
 │                                                             │
 │  agent_carrier_licenses & agent_state_licenses:            │
 │  ├── SELECT:                                               │
-│  │   ├── Agents can view their own licenses ✅            │
+│  │   ├── Closers can view their own licenses ✅            │
 │  │   └── Admins can view all licenses 🔒                  │
 │  └── INSERT/UPDATE/DELETE: Only admins 🔒                 │
 │                                                             │

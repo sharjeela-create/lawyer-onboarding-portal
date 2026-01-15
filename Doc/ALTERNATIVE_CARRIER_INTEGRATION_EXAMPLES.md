@@ -22,7 +22,7 @@
    
    👉 Suggested Carrier: American Amicable
    
-   Agents who can submit with American Amicable:
+   Closers who can submit with American Amicable:
    • @ Benjamin Smith
    • @ John Doe  
    • @ Jane Smith
@@ -110,7 +110,7 @@ if (eligibleAgents.length === 0) {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*Agents who can submit this caller with ${suggestion.carrier_name}:*\n${
+            text: `*Closers who can submit this caller with ${suggestion.carrier_name}:*\n${
               suggestion.eligible_agents
                 .map(agent => `• <@${agent.slack_user_id}> ${agent.display_name}`)
                 .join('\n')
@@ -169,7 +169,7 @@ if (eligibleAgents.length === 0) {
 ╠════════════════════════════════════════════╣
 ║  👉 Suggested Carrier: American Amicable   ║
 ║                                            ║
-║  Agents who can submit with American       ║
+║  Closers who can submit with American       ║
 ║  Amicable:                                 ║
 ║  • @Benjamin Smith                         ║
 ║  • @John Doe                               ║
@@ -195,7 +195,7 @@ if (eligibleAgents.length === 0) {
 ╠════════════════════════════════════════════╣
 ║  👉 Suggested Carrier: United Healthcare   ║
 ║                                            ║
-║  Agents who can submit with United         ║
+║  Closers who can submit with United         ║
 ║  Healthcare:                               ║
 ║  • @Benjamin Smith                         ║
 ║  • @Lydia Jones                            ║
@@ -259,7 +259,7 @@ export function AlternativeCarrierFinder({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-yellow-600" />
-            No Agents Available
+            No Closers Available
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -292,7 +292,7 @@ export function AlternativeCarrierFinder({
             </div>
 
             <div>
-              <p className="font-medium mb-2">Eligible Agents:</p>
+              <p className="font-medium mb-2">Eligible Closers:</p>
               <div className="space-y-2">
                 {suggestion.suggested_carrier.eligible_agents.map((agent: any) => (
                   <div 

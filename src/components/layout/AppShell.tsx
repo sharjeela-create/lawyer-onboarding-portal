@@ -183,6 +183,7 @@ const AppShell = ({
         icon: <CheckCircle className="h-4 w-4 text-current" />,
         show: isAuthorizedUser && hasNavigationAccess && !restricted,
       },
+      /*
       {
         label: 'Agent Reports & Logs',
         to: '/reports',
@@ -195,6 +196,7 @@ const AppShell = ({
         icon: <BarChart3 className="h-4 w-4 text-current" />,
         show: isBen && hasNavigationAccess && !restricted,
       },
+      */
       {
         label: 'GHL Sync Portal',
         to: '/ghl-sync',

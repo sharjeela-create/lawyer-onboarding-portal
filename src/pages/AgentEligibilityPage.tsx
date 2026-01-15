@@ -62,7 +62,7 @@ export function AgentEligibilityPage() {
   const [uplineInfo, setUplineInfo] = useState<UplineInfo | null>(null);
   const [overrideStates, setOverrideStates] = useState<OverrideStateInfo[]>([]);
 
-  // Find Eligible Agents feature
+  // Find Eligible Closers feature
   const [selectedCarrier, setSelectedCarrier] = useState<string>('');
   const [selectedState, setSelectedState] = useState<string>('');
   const [eligibleAgents, setEligibleAgents] = useState<any[]>([]);
@@ -558,7 +558,7 @@ export function AgentEligibilityPage() {
 
       if (agentsList.length === 0) {
         toast({
-          title: "No Eligible Agents",
+          title: "No Eligible Closers",
           description: isAetna 
             ? `No agents are available for Aetna in ${stateObj.state_name} (requires upline approval and custom state availability)`
             : `No agents found who are licensed for ${carrierObj.carrier_name} in ${stateObj.state_name}`,
@@ -596,12 +596,12 @@ export function AgentEligibilityPage() {
             </p>
           </div>
 
-          {/* Find Eligible Agents */}
+          {/* Find Eligible Closers */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Find Eligible Agents
+                Find Eligible Closers
               </CardTitle>
               <CardDescription>
                 Search for agents licensed to sell a specific carrier in a specific state
@@ -669,7 +669,7 @@ export function AgentEligibilityPage() {
                   className="w-full md:w-auto"
                 >
                   <Shield className="h-4 w-4 mr-2" />
-                  {searchingAgents ? 'Searching...' : 'Search for Eligible Agents'}
+                  {searchingAgents ? 'Searching...' : 'Search for Eligible Closers'}
                 </Button>
 
                 {/* Search Results */}
@@ -744,7 +744,7 @@ export function AgentEligibilityPage() {
                     <Info className="h-4 w-4" />
                     <AlertTitle>No Results</AlertTitle>
                     <AlertDescription>
-                      Click "Search for Eligible Agents" to find agents licensed for the selected carrier and state.
+                      Click "Search for Eligible Closers" to find agents licensed for the selected carrier and state.
                     </AlertDescription>
                   </Alert>
                 )}

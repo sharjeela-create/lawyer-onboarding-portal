@@ -172,7 +172,7 @@ const items = await fetchBoardItemsBySalesAgent(
 5. **Real-time Updates** - Use Monday.com webhooks for live updates
 6. **Export Functionality** - Export placement data to CSV/Excel
 
-### Making it Dynamic for All Agents
+### Making it Dynamic for All Closers
 To make this work for all licensed agents (not just Isaac Reed):
 
 1. **Create Agent Mapping Table** in Supabase:

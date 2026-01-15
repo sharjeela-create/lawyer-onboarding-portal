@@ -296,10 +296,10 @@ const BufferPerformanceReport = () => {
                   <Label htmlFor="agent-filter">Buffer Agent</Label>
                   <Select value={selectedAgent} onValueChange={setSelectedAgent}>
                     <SelectTrigger>
-                      <SelectValue placeholder="All Agents" />
+                      <SelectValue placeholder="All Closers" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Agents</SelectItem>
+                      <SelectItem value="all">All Closers</SelectItem>
                       {availableAgents.map((agent) => (
                         <SelectItem key={agent} value={agent}>
                           {agent}
@@ -318,7 +318,7 @@ const BufferPerformanceReport = () => {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Users className="h-4 w-4 text-blue-500" />
-                  Active Agents
+                  Active Closers
                 </CardTitle>
               </CardHeader>
               <CardContent>

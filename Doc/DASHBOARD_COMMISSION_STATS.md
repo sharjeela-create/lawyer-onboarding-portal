@@ -1,4 +1,4 @@
-# Dashboard Commission Stats for Licensed Agents
+# Dashboard Commission Stats for Closers
 
 ## Overview
 The main Dashboard now displays commission statistics for licensed agents, providing visibility into their pending commission approvals and product type breakdown.
@@ -14,7 +14,7 @@ The main Dashboard now displays commission statistics for licensed agents, provi
 
 #### 2. **Commission Stats Cards (4 Additional Cards)**
 
-**For Licensed Agents Only**, the dashboard displays 8 stat cards total (2 rows):
+**For Closers Only**, the dashboard displays 8 stat cards total (2 rows):
 
 **Row 1 - Standard Stats (All Users):**
 1. Total Leads
@@ -22,7 +22,7 @@ The main Dashboard now displays commission statistics for licensed agents, provi
 3. Pending
 4. This Week
 
-**Row 2 - Commission Stats (Licensed Agents Only):**
+**Row 2 - Commission Stats (Closers Only):**
 5. **Pending Commissions** - Total count of pending approvals
 6. **Total Premium** - Sum of all monthly premiums for pending commissions
 7. **Level Products** - Count and percentage of Level products
@@ -107,7 +107,7 @@ else if (
 └─────────────┴─────────────┴─────────────┴─────────────┘
 ```
 
-**Licensed Agents (8 Cards in 2 Rows):**
+**Closers (8 Cards in 2 Rows):**
 ```
 ┌─────────────┬─────────────┬─────────────┬─────────────┐
 │ Total Leads │ Submitted   │ Pending     │ This Week   │

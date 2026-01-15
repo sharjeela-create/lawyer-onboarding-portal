@@ -241,7 +241,7 @@ export const AgentsPage = () => {
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Users className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-blue-700 font-medium">Active Agents</span>
+              <span className="text-sm text-blue-700 font-medium">Active Closers</span>
             </div>
             <p className="text-2xl font-bold text-blue-900">{activeAgents}</p>
             <p className="text-xs text-blue-600 mt-1">With placements</p>
@@ -395,7 +395,7 @@ export const AgentsPage = () => {
             <CardTitle className="flex items-center space-x-2">
               <Users className="h-5 w-5" />
               <span>Agent Performance Overview</span>
-              <Badge variant="outline">{agentPerformance.length} Agents</Badge>
+              <Badge variant="outline">{agentPerformance.length} Closers</Badge>
             </CardTitle>
           </div>
         </CardHeader>

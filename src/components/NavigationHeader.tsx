@@ -33,7 +33,7 @@ export const NavigationHeader = ({ title, showBackButton = false, backTo }: Navi
   // Licensed agents, center users, buffer agents, and Ben should see navigation menu
   const shouldShowNavigation = (isAuthorizedUser && hasNavigationAccess) || (isLicensedAgent && !licensedLoading) || (isCenterUser && !centerLoading) || (isBufferAgent && !bufferLoading);
   
-  // Find Eligible Agents should be visible to Ben, licensed agents, and center users
+  // Find Eligible Closers should be visible to Ben, licensed agents, and center users
   const canAccessAgentFinder = isBen || (isLicensedAgent && !licensedLoading) || (isCenterUser && !centerLoading);
 
   useEffect(() => {
@@ -111,7 +111,7 @@ export const NavigationHeader = ({ title, showBackButton = false, backTo }: Navi
           </Badge>
         </div>
         <div className="flex items-center space-x-2">
-          {/* Task Notification Panel for Licensed Agents */}
+          {/* Task Notification Panel for Closers */}
           {isLicensedAgent && !licensedLoading && <TaskNotificationPanel />}
           
           {/* Main Navigation Menu - Show for authorized users OR licensed agents */}
@@ -182,7 +182,7 @@ export const NavigationHeader = ({ title, showBackButton = false, backTo }: Navi
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/agent-licensing')}>
                       <ShieldCheck className="mr-2 h-4 w-4" />
-                      Find Eligible Agents
+                      Find Eligible Closers
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
@@ -208,6 +208,7 @@ export const NavigationHeader = ({ title, showBackButton = false, backTo }: Navi
                 {isAuthorizedUser && hasNavigationAccess && (
                   <>
                     <DropdownMenuLabel>Reports & Analytics</DropdownMenuLabel>
+                    {/*
                     <DropdownMenuItem onClick={() => navigate('/reports')}>
                       <BarChart3 className="mr-2 h-4 w-4" />
                       Agent Reports & Logs
@@ -220,10 +221,9 @@ export const NavigationHeader = ({ title, showBackButton = false, backTo }: Navi
                         </DropdownMenuItem>
                       </>
                     )}
+                    */}
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel>Tools</DropdownMenuLabel>
-                    
-                    
                     <DropdownMenuItem onClick={() => navigate('/ghl-sync')}>
                       <Zap className="mr-2 h-4 w-4" />
                       GHL Sync Portal

@@ -1,7 +1,7 @@
-# AI Coding Assistant Instructions for Agents Portal
+# AI Coding Assistant Instructions for Closers Portal
 
 ## Project Overview
-This is the **Crash Guard Automation Agents Portal** - a React/TypeScript application for managing insurance lead verification workflows. The system supports complex agent workflows with real-time status updates, notifications, and Google Sheets integration.
+This is the **Crash Guard Automation Closers Portal** - a React/TypeScript application for managing insurance lead verification workflows. The system supports complex agent workflows with real-time status updates, notifications, and Google Sheets integration.
 
 ## Core Architecture
 
@@ -17,7 +17,7 @@ Leads → Call Results → Verification Sessions → Agent Assignments
 ```
 
 ### User Types & Permissions
-- **Regular Agents**: Full dashboard access with role-based restrictions
+- **Regular Closers**: Full dashboard access with role-based restrictions
 - **Restricted Users**: Read-only access, auto-redirected to `/daily-deal-flow`
 - **Center Users**: Lead vendors with access only to their own leads via `/center-lead-portal`
 - **Admins**: Full system access (identified by `agent_code` in profiles)

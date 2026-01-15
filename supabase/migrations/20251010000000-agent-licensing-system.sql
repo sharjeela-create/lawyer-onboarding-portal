@@ -151,7 +151,7 @@ CREATE INDEX idx_agent_carrier_licenses_active ON public.agent_carrier_licenses(
 ALTER TABLE public.agent_carrier_licenses ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
-CREATE POLICY "Agents can view their own carrier licenses" 
+CREATE POLICY "Closers can view their own carrier licenses" 
 ON public.agent_carrier_licenses 
 FOR SELECT 
 USING (auth.uid() = agent_user_id);
@@ -238,7 +238,7 @@ CREATE INDEX idx_agent_state_licenses_active ON public.agent_state_licenses(agen
 ALTER TABLE public.agent_state_licenses ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
-CREATE POLICY "Agents can view their own state licenses" 
+CREATE POLICY "Closers can view their own state licenses" 
 ON public.agent_state_licenses 
 FOR SELECT 
 USING (auth.uid() = agent_user_id);

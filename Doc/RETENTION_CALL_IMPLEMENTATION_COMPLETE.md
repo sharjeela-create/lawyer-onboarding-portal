@@ -1,7 +1,7 @@
 # Retention Call Tracking - Implementation Complete ✅
 
 ## Overview
-The retention call tracking system has been fully implemented across the entire call workflow. Agents can now mark calls as "retention calls" (calls from the retention team) which are tracked through the complete call lifecycle.
+The retention call tracking system has been fully implemented across the entire call workflow. Closers can now mark calls as "retention calls" (calls from the retention team) which are tracked through the complete call lifecycle.
 
 ---
 

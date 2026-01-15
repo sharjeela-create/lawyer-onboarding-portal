@@ -44,8 +44,8 @@ CREATE POLICY "Center users can view their callback requests"
         requested_by = auth.uid()
     );
 
--- Agents can view all callback requests
-CREATE POLICY "Agents can view all callback requests"
+-- Closers can view all callback requests
+CREATE POLICY "Closers can view all callback requests"
     ON public.callback_requests
     FOR SELECT
     TO authenticated
@@ -56,8 +56,8 @@ CREATE POLICY "Agents can view all callback requests"
         )
     );
 
--- Agents can update callback requests
-CREATE POLICY "Agents can update callback requests"
+-- Closers can update callback requests
+CREATE POLICY "Closers can update callback requests"
     ON public.callback_requests
     FOR UPDATE
     TO authenticated

@@ -117,7 +117,7 @@ CREATE POLICY "verification_items_insert_session_agents" ON public.verification_
         )
     );
 
--- Agents involved in the session can update items
+-- Closers involved in the session can update items
 CREATE POLICY "verification_items_update_session_agents" ON public.verification_items
     FOR UPDATE USING (
         auth.uid() IS NOT NULL

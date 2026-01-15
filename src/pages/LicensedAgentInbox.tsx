@@ -334,7 +334,7 @@ const LicensedAgentInbox = () => {
                       <SelectValue placeholder="All agents" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Agents</SelectItem>
+                      <SelectItem value="all">All Closers</SelectItem>
                       {uniqueCreators.map((creator) => (
                         <SelectItem key={creator} value={creator || 'unknown'}>
                           {creator || 'Unknown Agent'}

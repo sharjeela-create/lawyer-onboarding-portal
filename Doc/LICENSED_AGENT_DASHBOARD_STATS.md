@@ -3,7 +3,7 @@
 ## Overview
 The Dashboard now shows comprehensive sales metrics for licensed agents, providing insights into total sales, weekly performance, daily submissions, and product mix analysis with premiums.
 
-## New Metrics for Licensed Agents
+## New Metrics for Closers
 
 ### 📊 **Row 1: Standard Analytics (All Users)**
 1. **Total Leads** - System-wide lead count
@@ -11,7 +11,7 @@ The Dashboard now shows comprehensive sales metrics for licensed agents, providi
 3. **Pending** - Pending leads
 4. **This Week** - Leads from last 7 days
 
-### 💼 **Row 2: Personal Sales Metrics (Licensed Agents Only)**
+### 💼 **Row 2: Personal Sales Metrics (Closers Only)**
 
 #### 1. Your Total Sales
 - **Value**: Total count of ALL submissions by this agent
@@ -77,7 +77,7 @@ The Dashboard now shows comprehensive sales metrics for licensed agents, providi
 └─────────────┴─────────────┴─────────────┴─────────────┘
 ```
 
-### Licensed Agents (Benjamin Example)
+### Closers (Benjamin Example)
 ```
 Row 1: Standard Stats
 ┌─────────────┬─────────────┬─────────────┬─────────────┐

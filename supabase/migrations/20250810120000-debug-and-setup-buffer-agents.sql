@@ -1,4 +1,4 @@
--- Debug and Setup Buffer Agents Migration
+-- Debug and Setup Buffer Closers Migration
 -- This migration will help debug existing data and properly set up buffer agents
 
 -- First, let's examine what's currently in our tables

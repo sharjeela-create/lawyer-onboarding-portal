@@ -287,7 +287,7 @@ serve(async (req)=>{
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*Agents who can take this call:*\n${agentMentions}`
+        text: `*Closers who can take this call:*\n${agentMentions}`
       }
     }, {
       type: 'context',

@@ -258,9 +258,9 @@ export const AgentReportsAndLogs = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Agents</SelectItem>
-                  <SelectItem value="buffer">Buffer Agents</SelectItem>
-                  <SelectItem value="licensed">Licensed Agents</SelectItem>
+                  <SelectItem value="all">All Closers</SelectItem>
+                  <SelectItem value="buffer">Buffer Closers</SelectItem>
+                  <SelectItem value="licensed">Closers</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -272,7 +272,7 @@ export const AgentReportsAndLogs = () => {
                   <SelectValue placeholder="Select agent" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Agents</SelectItem>
+                  <SelectItem value="all">All Closers</SelectItem>
                   {agents
                     .filter(agent => selectedAgentType === 'all' || agent.type === selectedAgentType)
                     .map(agent => (

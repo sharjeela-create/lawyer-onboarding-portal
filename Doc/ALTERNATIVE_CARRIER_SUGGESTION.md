@@ -25,7 +25,7 @@ This system provides intelligent carrier suggestions when no agents are availabl
 
 #### Upline Verification
 - All agent eligibility checks include upline verification
-- Agents without required uplines are excluded from suggestions
+- Closers without required uplines are excluded from suggestions
 - Upline information is included in the response for transparency
 
 ## API Reference
@@ -74,7 +74,7 @@ POST /functions/v1/suggest-alternative-carrier
 
 ## Use Cases
 
-### 1. No Agents Available Scenario
+### 1. No Closers Available Scenario
 **Scenario**: A Pennsylvania lead comes in for Aetna, but no agents are licensed/available
 **Action**: Call the function to get alternative carrier suggestions
 **Result**: System suggests "American Amicable" with 3 eligible agents
@@ -100,11 +100,11 @@ const response = await supabase.functions.invoke('suggest-alternative-carrier', 
 
 if (response.data.suggested_carrier) {
   console.log(`Suggest: ${response.data.suggested_carrier.carrier_name}`);
-  console.log(`Available Agents: ${response.data.suggested_carrier.agent_count}`);
+  console.log(`Available Closers: ${response.data.suggested_carrier.agent_count}`);
 }
 ```
 
-### Example 2: Notify Agents with Suggestions
+### Example 2: Notify Closers with Suggestions
 ```typescript
 // After finding no agents for original carrier
 const { data: alternatives } = await supabase.functions.invoke('suggest-alternative-carrier', {
@@ -119,7 +119,7 @@ if (alternatives.suggested_carrier) {
     
 ** Suggested Carrier: ${alternatives.suggested_carrier.carrier_name} **
 
-Agents who can submit with ${alternatives.suggested_carrier.carrier_name}:
+Closers who can submit with ${alternatives.suggested_carrier.carrier_name}:
 ${alternatives.suggested_carrier.eligible_agents.map(a => `• ${a.display_name}`).join('\n')}
 
 ${alternatives.suggested_carrier.agent_count} eligible agent(s)`
@@ -182,9 +182,9 @@ Original Carrier: Aetna
 Total Alternatives Found: 5
 
 👉 SUGGESTED CARRIER: American Amicable
-   Available Agents: 3
+   Available Closers: 3
 
-   Eligible Agents:
+   Eligible Closers:
    • Benjamin Smith (@AGENT001) - ✓ Has Upline: Senior Agent
    • John Doe (@AGENT002) - ✓ Has Upline: Team Lead
    • Jane Smith (@AGENT003) - ✓ Has Upline: Senior Agent

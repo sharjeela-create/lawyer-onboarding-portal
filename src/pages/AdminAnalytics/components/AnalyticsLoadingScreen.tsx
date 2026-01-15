@@ -76,7 +76,7 @@ export const AnalyticsLoadingScreen = () => {
         <div className="mt-8 grid grid-cols-3 gap-4 text-xs text-muted-foreground">
           <div className="flex flex-col items-center p-2 rounded-lg bg-blue-50/50">
             <TrendingUp className="h-4 w-4 mb-1 text-blue-500" />
-            <span>Agents</span>
+            <span>Closers</span>
           </div>
           <div className="flex flex-col items-center p-2 rounded-lg bg-purple-50/50">
             <Database className="h-4 w-4 mb-1 text-purple-500" />

@@ -1,9 +1,20 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, RefreshCw, Download } from "lucide-react";
+import { Loader2, RefreshCw, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export interface SubmissionPortalRow {
   id: string;
@@ -49,6 +60,7 @@ interface CallLog {
 }
 
 const SubmissionPortalPage = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState<SubmissionPortalRow[]>([]);
   const [filteredData, setFilteredData] = useState<SubmissionPortalRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -257,22 +269,23 @@ const SubmissionPortalPage = () => {
     try {
       setRefreshing(true);
 
-      // First, get all transfer portal entries
-      let transferQuery = (supabase as any)
-        .from('transfer_portal')
+      const pendingApprovalStatus = "pending approval";
+
+      let transfersQuery = supabase
+        .from('daily_deal_flow')
         .select('*')
+        .neq('status', pendingApprovalStatus)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false });
 
-      // Apply date filter if set
       if (dateFilter) {
-        transferQuery = transferQuery.eq('date', dateFilter);
+        transfersQuery = transfersQuery.eq('date', dateFilter);
       }
 
-      const { data: transferData, error: transferError } = await transferQuery;
+      const { data: transferData, error: transferError } = await transfersQuery;
 
       if (transferError) {
-        console.error("Error fetching transfer portal data:", transferError);
+        console.error("Error fetching submission portal base transfers:", transferError);
         toast({
           title: "Error",
           description: "Failed to fetch transfer portal data",
@@ -310,7 +323,7 @@ const SubmissionPortalPage = () => {
       }
 
       // Merge transfer data with submission data
-      const mergedData = (transferData as SubmissionPortalRow[])?.map(transfer => {
+      const mergedData = ((transferData ?? []) as unknown as SubmissionPortalRow[])?.map(transfer => {
         const submission = submissionMap.get(transfer.submission_id);
         
         if (submission) {
@@ -334,17 +347,27 @@ const SubmissionPortalPage = () => {
           };
         } else {
           // No submission data - show transfer data with missing label
+          const isCallback = Boolean((transfer as any).from_callback) || Boolean((transfer as any).is_callback);
           return {
             ...transfer,
             // Mark as missing submission data
             has_submission_data: false,
-            verification_logs: "Update log missing - No submission data found"
+            verification_logs: "Update log missing - No submission data found",
+            source_type: isCallback ? 'callback' : 'zapier',
           };
         }
       }) || [];
 
+      const mergedWithSourceType = mergedData.map((row) => {
+        const isCallback = Boolean((row as any).from_callback) || Boolean((row as any).is_callback);
+        return {
+          ...row,
+          source_type: row.source_type ?? (isCallback ? 'callback' : 'zapier'),
+        };
+      });
+
       // Fetch call logs for ALL entries (not just those with submission data)
-      const allSubmissionIds = mergedData.map(row => row.submission_id);
+      const allSubmissionIds = mergedWithSourceType.map(row => row.submission_id);
       
       let callLogsData: Record<string, CallLog[]> = {};
       
@@ -370,7 +393,7 @@ const SubmissionPortalPage = () => {
       }
 
       // Add verification logs to each row
-      const dataWithLogs = mergedData.map(row => {
+      const dataWithLogs = mergedWithSourceType.map(row => {
         const logs = callLogsData[row.submission_id] || [];
         
         if (logs.length > 0) {
@@ -422,10 +445,13 @@ const SubmissionPortalPage = () => {
   }, [data, dateFilter, statusFilter, showDuplicates, searchTerm, dataCompletenessFilter]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentPageData = filteredData.slice(startIndex, endIndex);
+  const currentPageData = useMemo(
+    () => filteredData.slice(startIndex, endIndex),
+    [filteredData, startIndex, endIndex]
+  );
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -445,82 +471,10 @@ const SubmissionPortalPage = () => {
 
   useEffect(() => {
     fetchData();
-  }, [dateFilter, statusFilter]);
+  }, [dateFilter]);
 
   const handleRefresh = () => {
     fetchData(true);
-  };
-
-  const handleExport = () => {
-    // Simple CSV export
-    if (filteredData.length === 0) {
-      toast({
-        title: "No Data",
-        description: "No data to export",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const headers = [
-      'Submission ID',
-      'Date',
-      'Insured Name',
-      'Lead Vendor',
-      'Phone Number',
-      'Buffer Agent',
-      'Agent',
-      'Licensed Agent',
-      'Data Status',
-      'Status',
-      'Call Result',
-      'Product Type',
-      'Face Amount',
-      'Sent to Underwriting',
-      'Submission Date',
-      'Call Source',
-      'Submission Source',
-      'Verification Logs',
-      'Created At'
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...filteredData.map(row => [
-        row.submission_id,
-        row.date || '',
-        row.insured_name || '',
-        row.lead_vendor || '',
-        row.client_phone_number || '',
-        row.buffer_agent || '',
-        row.agent || '',
-        row.licensed_agent_account || '',
-        row.has_submission_data ? 'Complete' : 'Missing Update Log',
-        row.status || '',
-        row.call_result || '',
-        row.product_type || '',
-        row.face_amount || '',
-        row.sent_to_underwriting ? 'Yes' : 'No',
-        row.submission_date || '',
-        row.call_source || '',
-        row.submission_source || '',
-        row.verification_logs || '',
-        row.created_at || ''
-      ].map(field => `"${field}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `submission-portal-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-
-    toast({
-      title: "Export Complete",
-      description: "Data exported to CSV successfully",
-    });
   };
 
   if (loading) {
@@ -534,300 +488,138 @@ const SubmissionPortalPage = () => {
     );
   }
 
+  const handleView = (row: SubmissionPortalRow) => {
+    if (!row?.id) return;
+    navigate(`/daily-deal-flow/lead/${encodeURIComponent(row.id)}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Analytics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Transfers</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{filteredData.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  {dateFilter ? `For ${dateFilter}` : 'All time'}
-                  {!showDuplicates && data.length !== filteredData.length && ' (duplicates removed)'}
-                  {filteredData.length > itemsPerPage && (
-                    <span className="block">
-                      Showing {startIndex + 1}-{Math.min(endIndex, filteredData.length)} of {filteredData.length}
-                    </span>
-                  )}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Transfers with Logs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {filteredData.filter(row => 
-                    row.verification_logs && 
-                    !row.verification_logs.includes('No call activity recorded') &&
-                    !row.verification_logs.includes('Update log missing')
-                  ).length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Transfers with call activity logs
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Missing Update Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {filteredData.length > 0
-                    ? Math.round((filteredData.filter(row => 
-                        !row.verification_logs || 
-                        row.verification_logs.includes('No call activity recorded') ||
-                        row.verification_logs.includes('Update log missing')
-                      ).length / filteredData.length) * 100)
-                    : 0}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Of filtered transfers missing logs
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-muted-foreground">
-                Track all transfers and their submission status - shows every entry from transfer portal
-              </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, phone, vendor..."
+                className="max-w-md"
+              />
+
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v)}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="__ALL__">All Statuses</SelectItem>
+                    <SelectItem value="Pending Approval">Pending Approval</SelectItem>
+                    <SelectItem value="Underwriting">Underwriting</SelectItem>
+                    <SelectItem value="Submitted">Submitted</SelectItem>
+                    <SelectItem value="DQ'd Can't be sold">DQ'd Can't be sold</SelectItem>
+                    <SelectItem value="Returned To Center - DQ">Returned To Center - DQ</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
+              <Select value={dataCompletenessFilter} onValueChange={(v) => setDataCompletenessFilter(v)}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="All Records" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="__ALL__">All Records</SelectItem>
+                    <SelectItem value="active_only">Active Only (Hide Missing Logs & Completed)</SelectItem>
+                    <SelectItem value="missing_logs_only">Missing Update Log Only</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
+              <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-56" />
+
+              <Select value={showDuplicates ? "true" : "false"} onValueChange={(v) => setShowDuplicates(v === "true")}>
+                <SelectTrigger className="w-56">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="true">Show All Records</SelectItem>
+                    <SelectItem value="false">Remove Duplicates</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex gap-2">
+
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="px-3 py-1">
+                {filteredData.length} records
+              </Badge>
               <Button onClick={handleRefresh} disabled={refreshing}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button onClick={handleExport} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
             </div>
           </div>
 
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Search</label>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name, phone, vendor..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Date</label>
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Status</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="__ALL__">All Statuses</option>
-                  <option value="Pending Approval">Pending Approval</option>
-                  <option value="Underwriting">Underwriting</option>
-                  <option value="Submitted">Submitted</option>
-                  <option value="DQ'd Can't be sold">DQ'd Can't be sold</option>
-                  <option value="Returned To Center - DQ">Returned To Center - DQ</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Data Completeness</label>
-                <select
-                  value={dataCompletenessFilter}
-                  onChange={(e) => setDataCompletenessFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="__ALL__">All Records</option>
-                  <option value="active_only">Active Only (Hide Missing Logs & Completed)</option>
-                  <option value="missing_logs_only">Missing Update Log Only</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Show Duplicates</label>
-                <select
-                  value={showDuplicates ? "true" : "false"}
-                  onChange={(e) => setShowDuplicates(e.target.value === "true")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="true">Show All Records</option>
-                  <option value="false">Remove Duplicates</option>
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Data Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Transfer Records ({filteredData.length})
-              {filteredData.length > itemsPerPage && (
-                <span className="text-sm font-normal text-muted-foreground ml-2">
-                  Page {currentPage} of {totalPages} • Showing {startIndex + 1}-{Math.min(endIndex, filteredData.length)}
-                </span>
-              )}
-              {!showDuplicates && data.length !== filteredData.length && (
-                <span className="text-sm font-normal text-muted-foreground ml-2">
-                  ({data.length - filteredData.length} duplicates removed)
-                </span>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {filteredData.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No transfer records found for the selected filters.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      
-                      <th className="text-left p-2">Date</th>
-                      <th className="text-left p-2">Insured Name</th>
-                      <th className="text-left p-2">Lead Vendor</th>
-                      <th className="text-left p-2">Data Status</th>
-                      <th className="text-left p-2">Status</th>
-                      <th className="text-left p-2">Agent</th>
-                      <th className="text-left p-2">Underwriting</th>
-                      <th className="text-left p-2">Call Source</th>
-                      <th className="text-left p-2 min-w-80">Verification Logs</th>
+          <Card className="flex min-h-[650px] flex-1 flex-col">
+            <CardContent className="p-0 min-h-0 flex-1 flex flex-col">
+              <div className="min-h-0 flex-1 overflow-auto">
+                <table className="w-full table-fixed text-sm">
+                  <thead className="bg-muted/40">
+                    <tr className="text-left text-xs uppercase text-muted-foreground">
+                      <th className="px-4 py-3 w-[140px]">Date</th>
+                      <th className="px-4 py-3">Customer Name</th>
+                      <th className="px-4 py-3 w-[180px]">Phone Number</th>
+                      <th className="px-4 py-3 w-[200px]">Lead Vendor</th>
+                      <th className="px-4 py-3 w-[180px]">Status</th>
+                      <th className="px-4 py-3 w-[200px]">Assigned</th>
+                      <th className="px-4 py-3 w-[120px] text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentPageData.map((row) => (
-                      <tr key={row.id} className="border-b hover:bg-gray-50">
-                        
-                        <td className="p-2">{row.date}</td>
-                        <td className="p-2">{row.insured_name}</td>
-                        <td className="p-2">{row.lead_vendor}</td>
-                        <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            row.has_submission_data 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {row.has_submission_data ? 'Complete' : 'Missing Update Log'}
-                          </span>
-                        </td>
-                        <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            row.status === 'Pending Approval'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : row.status === 'Underwriting'
-                              ? 'bg-blue-100 text-blue-800'
-                              : row.status === 'Submitted'
-                              ? 'bg-green-100 text-green-800'
-                              : row.status?.includes('DQ')
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {row.status}
-                          </span>
-                        </td>
-                        <td className="p-2">{row.agent || row.buffer_agent}</td>
-                        <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            row.sent_to_underwriting ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {row.has_submission_data ? (row.sent_to_underwriting ? 'Yes' : 'No') : 'N/A'}
-                          </span>
-                        </td>
-                        <td className="p-2">{row.call_source}</td>
-                        <td className="p-2 min-w-80">
-                          <div className="text-xs text-gray-700 leading-relaxed">
-                            {row.verification_logs}
-                          </div>
+                    {currentPageData.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                          No records found.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      currentPageData.map((row) => (
+                        <tr key={row.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-3">{row.date ?? '—'}</td>
+                          <td className="px-4 py-3 font-medium">{row.insured_name ?? '—'}</td>
+                          <td className="px-4 py-3">{row.client_phone_number ?? '—'}</td>
+                          <td className="px-4 py-3">{row.lead_vendor ?? '—'}</td>
+                          <td className="px-4 py-3">
+                            <Badge variant="outline">{row.status ?? '—'}</Badge>
+                          </td>
+                          <td className="px-4 py-3">{row.licensed_agent_account || row.agent || row.buffer_agent || '—'}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-center">
+                              <Button variant="outline" size="sm" onClick={() => handleView(row)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} entries
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevPage}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              
-              {/* Page Numbers */}
-              <div className="flex gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handlePageChange(pageNum)}
-                      className="w-8 h-8 p-0"
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
+              <div className="flex items-center justify-between border-t px-4 py-3">
+                <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={currentPage <= 1}>
+                  Previous
+                </Button>
+                <div className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</div>
+                <Button variant="outline" size="sm" onClick={handleNextPage} disabled={currentPage >= totalPages}>
+                  Next
+                </Button>
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

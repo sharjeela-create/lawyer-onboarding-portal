@@ -37,8 +37,8 @@ Implemented a comprehensive callback request system that allows BPO centers to r
 **RLS Policies**:
 - Center users can INSERT their own requests
 - Center users can SELECT their own requests
-- Agents can SELECT all requests
-- Agents can UPDATE all requests
+- Closers can SELECT all requests
+- Closers can UPDATE all requests
 
 ### 2. Frontend Components
 
@@ -210,7 +210,7 @@ interface CallbackRequestFormProps {
    - Slack notification sent to agents
    - Request saved in database
 
-### For Agents
+### For Closers
 
 1. **Receive Notifications**
    - Slack notification in public channel
@@ -285,7 +285,7 @@ interface CallbackRequestFormProps {
 ### Security
 - RLS policies restrict data access
 - Center users can only see their own requests
-- Agents can view/update all requests
+- Closers can view/update all requests
 - Authenticated users only
 
 ## Database Migration

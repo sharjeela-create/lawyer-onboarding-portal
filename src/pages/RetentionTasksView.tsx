@@ -280,7 +280,7 @@ const RetentionTasksView = () => {
                       <SelectValue placeholder="All agents" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Licensed Agents</SelectItem>
+                      <SelectItem value="all">All Closers</SelectItem>
                       {uniqueAssignedAgents.map((agent) => (
                         <SelectItem key={agent} value={agent || 'unknown'}>
                           {agent || 'Unknown Agent'}

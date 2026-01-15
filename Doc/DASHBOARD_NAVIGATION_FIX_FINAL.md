@@ -1,4 +1,4 @@
-# Dashboard Navigation Fix for Licensed Agents - FINAL
+# Dashboard Navigation Fix for Closers - FINAL
 
 ## Issue
 Lydia (licensed agent) reported:
@@ -36,7 +36,7 @@ The **Dashboard page** was using a **custom header** instead of the `NavigationH
 - ✅ No duplicate sign-out logic
 - ✅ No hardcoded user restrictions
 
-### 2. **ProtectedRoute.tsx** - Skip Center Check for Licensed Agents
+### 2. **ProtectedRoute.tsx** - Skip Center Check for Closers
 ```typescript
 // Licensed agents can access commission-portal and dashboard
 if (isLicensedAgent) {
@@ -63,7 +63,7 @@ if (!allowedPaths.some(path => location.pathname.startsWith(path))) {
 }
 ```
 
-### 4. **NavigationHeader.tsx** - Show Menu to Licensed Agents
+### 4. **NavigationHeader.tsx** - Show Menu to Closers
 ```typescript
 const shouldShowNavigation = 
   (isAuthorizedUser && hasNavigationAccess) || 

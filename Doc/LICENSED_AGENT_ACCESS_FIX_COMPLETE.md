@@ -55,7 +55,7 @@ const allowedPaths = ['/commission-portal', '/dashboard'];
 - ✅ Licensed agents can access both Commission Portal and Dashboard
 - ✅ Use `startsWith()` for path matching to allow sub-routes
 
-### 3. **NavigationHeader.tsx** - Show Menu to Licensed Agents
+### 3. **NavigationHeader.tsx** - Show Menu to Closers
 ```typescript
 // BEFORE: Only authorized users saw navigation
 {isAuthorizedUser && hasNavigationAccess && (
@@ -124,7 +124,7 @@ console.log('[useLicensedAgent] User IS a licensed agent:', { display_name, agen
 - ✅ Automatic navigation menu access
 - ✅ No duplicate sign-out logic
 
-## What Licensed Agents Can Now Access
+## What Closers Can Now Access
 
 ### ✅ Accessible Routes
 - `/commission-portal` - View pending commission approvals
@@ -181,7 +181,7 @@ All components now log their decisions for easy debugging:
 - [x] Center users redirected to `/center-lead-portal`
 - [x] Restricted users redirected to `/daily-deal-flow`
 
-## How to Add More Licensed Agents
+## How to Add More Closers
 
 Simply add a record to the `agent_status` table:
 

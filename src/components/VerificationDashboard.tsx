@@ -740,8 +740,6 @@ export const VerificationDashboard = () => {
       fetchingAgents={fetchingAgents}
       claimLicensedAgent={claimLicensedAgent}
       onLicensedAgentChange={setClaimLicensedAgent}
-      isRetentionCall={false}
-      onRetentionCallChange={() => {}}
       onCancel={() => setClaimModalOpen(false)}
       onClaim={handleClaimDroppedCall}
     />
@@ -835,8 +833,8 @@ export const VerificationDashboard = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Agent Types</SelectItem>
-                  <SelectItem value="buffer">Buffer Agents</SelectItem>
-                  <SelectItem value="licensed">Licensed Agents</SelectItem>
+                  <SelectItem value="buffer">Buffer Closers</SelectItem>
+                  <SelectItem value="licensed">Closers</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -846,7 +844,7 @@ export const VerificationDashboard = () => {
                   <SelectValue placeholder="Agent name" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Agents</SelectItem>
+                  <SelectItem value="all">All Closers</SelectItem>
                   {getAgentNames().map(name => (
                     <SelectItem key={name} value={name}>{name}</SelectItem>
                   ))}

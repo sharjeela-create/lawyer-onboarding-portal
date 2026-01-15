@@ -1,4 +1,4 @@
-# Apache Configuration for Vite React SPA (Agents Portal)
+# Apache Configuration for Vite React SPA (Closers Portal)
 
 # Enable Rewrite Engine for SPA routing
 <IfModule mod_rewrite.c>

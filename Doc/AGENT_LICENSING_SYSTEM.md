@@ -162,7 +162,7 @@ SELECT * FROM public.get_agent_licensing_summary(
 - **INSERT/UPDATE**: Only admins (users with agent_code in profiles)
 
 ### License Tables (agent_carrier_licenses, agent_state_licenses)
-- **SELECT**: Agents can view their own licenses; Admins can view all
+- **SELECT**: Closers can view their own licenses; Admins can view all
 - **INSERT/UPDATE/DELETE**: Only admins
 
 ## User Interface Components
@@ -198,7 +198,7 @@ Location: `src/pages/AgentLicensing.tsx`
 
 Combines both components in a tabbed interface:
 - **Manage Licenses** tab: AgentLicenseManager
-- **Find Agents** tab: EligibleAgentFinder
+- **Find Closers** tab: EligibleAgentFinder
 
 **Route:** `/agent-licensing`
 **Protection:** ProtectedRoute (requires authentication)
@@ -246,11 +246,11 @@ v_agent_email TEXT := 'ben@example.com';
 1. Log in as an admin user (user with agent_code)
 2. Navigate to Menu → Agent Licensing
 3. Select "Manage Licenses" to configure agents
-4. Select "Find Agents" to search for eligible agents
+4. Select "Find Closers" to search for eligible agents
 
 ## Integration Points
 
-### Finding Eligible Agents in Code
+### Finding Eligible Closers in Code
 ```typescript
 import { supabase } from '@/integrations/supabase/client';
 

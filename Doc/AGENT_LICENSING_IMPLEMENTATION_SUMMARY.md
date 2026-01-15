@@ -17,7 +17,7 @@
 3. **Security:**
    - Full Row Level Security (RLS) policies
    - Admin-only modifications (users with agent_code)
-   - Agents can view their own licenses
+   - Closers can view their own licenses
    - Proper indexes for performance
 
 ### Frontend Layer (React/TypeScript)
@@ -51,11 +51,11 @@
    - Check/uncheck carriers and states
    - Click "Save Changes"
 
-3. **Find Eligible Agents:**
-   - Select "Find Agents" tab
+3. **Find Eligible Closers:**
+   - Select "Find Closers" tab
    - Enter carrier name (e.g., "Americo")
    - Enter state name (e.g., "California")
-   - Click "Search for Eligible Agents"
+   - Click "Search for Eligible Closers"
 
 ## 📊 Example: Agent "Ben" Setup
 
@@ -79,7 +79,7 @@ Based on your requirements, here's what you need to do:
 
 ## 🔍 Testing the System
 
-### Test 1: Find Eligible Agents
+### Test 1: Find Eligible Closers
 ```
 Carrier: Americo
 State: California
@@ -102,7 +102,7 @@ Expected: Should NOT show Ben (not licensed in Hawaii)
 
 ## 💻 Integration Examples
 
-### Example 1: Filter Agents in Lead Assignment
+### Example 1: Filter Closers in Lead Assignment
 ```typescript
 // When assigning a lead, only show eligible agents
 const { data: eligibleAgents } = await supabase

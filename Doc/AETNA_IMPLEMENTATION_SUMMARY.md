@@ -391,7 +391,7 @@ curl -L -X POST 'https://gqhcjqxcvhgwsqfqgekh.supabase.co/functions/v1/notify-el
 
 ## Next Steps
 
-### To Enable Agents for Aetna:
+### To Enable Closers for Aetna:
 
 #### Option 1: Give Uplines Aetna Access (Recommended)
 ```sql
@@ -406,7 +406,7 @@ curl -L -X POST 'https://gqhcjqxcvhgwsqfqgekh.supabase.co/functions/v1/notify-el
 -- NOT recommended for Aetna
 ```
 
-#### Option 3: Add More Agents with Aetna
+#### Option 3: Add More Closers with Aetna
 ```sql
 -- Add Aetna to Isaac, Tatumn, etc.
 -- Add their uplines if needed

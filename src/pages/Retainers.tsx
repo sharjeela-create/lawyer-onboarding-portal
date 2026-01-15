@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Filter, Phone, User, Eye, Clock, UserPlus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, Phone, User, Eye, Clock, UserPlus, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { isRestrictedUser } from '@/lib/userPermissions';
@@ -42,6 +42,7 @@ const Retainers = () => {
   const [nameFilter, setNameFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [viewLeadLoadingId, setViewLeadLoadingId] = useState<string | null>(null);
   
   // No analytics: we only query the leads table
   
@@ -77,6 +78,40 @@ const Retainers = () => {
       fetchLeads();
     }
   }, [user]);
+
+  const handleViewLead = async (submissionId: string) => {
+    if (!submissionId) return;
+    setViewLeadLoadingId(submissionId);
+
+    try {
+      const { data: session, error } = await supabase
+        .from('verification_sessions')
+        .select('id, status, created_at')
+        .eq('submission_id', submissionId)
+        .in('status', ['pending', 'in_progress', 'ready_for_transfer', 'transferred', 'completed'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (session?.id) {
+        navigate(`/call-result-update?submissionId=${encodeURIComponent(submissionId)}`);
+        return;
+      }
+
+      navigate(`/leads/${encodeURIComponent(submissionId)}`);
+    } catch (e) {
+      console.error('Error resolving View Lead route:', e);
+      toast({
+        title: 'Error',
+        description: 'Unable to open lead right now. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setViewLeadLoadingId(null);
+    }
+  };
 
   useEffect(() => {
     applyFilters();
@@ -619,9 +654,16 @@ const Retainers = () => {
                               tabIndex={0}
                               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(lead.id); } }}
                             >
-                              <h3 className="text-lg font-semibold group-hover:underline">
+                              <button
+                                type="button"
+                                className="text-lg font-semibold group-hover:underline text-left"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/leads/${encodeURIComponent(lead.submission_id)}`);
+                                }}
+                              >
                                 {(lead.customer_full_name || 'N/A') + ' - ' + (lead.lead_vendor || 'N/A')}
-                              </h3>
+                              </button>
                               <Badge className={getStatusColor(getLeadStatus(lead))}>
                                 {getLeadStatus(lead)}
                               </Badge>
@@ -785,10 +827,15 @@ const Retainers = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => navigate(`/leads/${encodeURIComponent(lead.submission_id)}`)}
+                              onClick={() => handleViewLead(lead.submission_id)}
+                              disabled={viewLeadLoadingId === lead.submission_id}
                               className="flex items-center gap-2"
                             >
-                              <Eye className="h-4 w-4" />
+                              {viewLeadLoadingId === lead.submission_id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
                               View Lead
                             </Button>
                           </div>
@@ -880,9 +927,7 @@ const Retainers = () => {
         licensedAgents={licensedAgents}
         fetchingAgents={fetchingAgents}
         claimLicensedAgent={claimLicensedAgent}
-        isRetentionCall={claimIsRetentionCall}
         onLicensedAgentChange={setClaimLicensedAgent}
-        onRetentionCallChange={setClaimIsRetentionCall}
         onCancel={() => setClaimModalOpen(false)}
         onClaim={handleClaimCall}
       />

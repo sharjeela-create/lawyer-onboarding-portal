@@ -120,7 +120,7 @@ supabase/
 
 ## Usage Instructions
 
-### For Agents
+### For Closers
 1. Login to the dashboard
 2. Click "New Callback" in the Quick Actions section
 3. Fill out customer information (name, phone, and vendor are required)

@@ -247,7 +247,7 @@ LIMIT 5
 ### For End Users
 
 #### **1. Navigate to the Page**
-1. Log in to the Agents Portal
+1. Log in to the Closers Portal
 2. Click **Menu** in the top navigation
 3. Under **Tools**, select **"Deal Flow & Policy Lookup"**
 

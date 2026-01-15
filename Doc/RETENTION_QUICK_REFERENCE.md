@@ -5,7 +5,7 @@ A system to mark and track calls from the **retention team** (as opposed to regu
 
 ## 🔴 Key Points
 
-### For Agents:
+### For Closers:
 - **When Starting Verification:** Toggle "Mark as Retention Call" if the customer is from retention team
 - **When Claiming Call:** Can optionally override the retention status if needed
 - **When Submitting Result:** Purple "Retention Call" badge shows the current status

@@ -150,7 +150,7 @@ Invoke-RestMethod -Uri "https://YOUR_PROJECT_ID.supabase.co/functions/v1/notify-
 
 When you invoke the function, check the Slack channel (**#sample-center-transfer-channel**) for:
 
-### Successful Case (Agents Found):
+### Successful Case (Closers Found):
 ```
 🔔 New Lead Available
 
@@ -162,14 +162,14 @@ State: California
 
 ────────────────
 
-Agents who can take this call:
+Closers who can take this call:
 • @Benjamin
 • @Lydia (upline: Benjamin)
 
 2 eligible agent(s) (upline licenses verified)
 ```
 
-### No Agents Case:
+### No Closers Case:
 ```
 🚨 New Lead Available - No eligible agents found for AMAM in InvalidState
 
@@ -210,7 +210,7 @@ This may be due to upline license requirements for override states.
 }
 ```
 
-### No Agents Response:
+### No Closers Response:
 ```json
 {
   "success": true,
@@ -263,7 +263,7 @@ The function will tag these agents:
 - Verify bot has permission to post in #sample-center-transfer-channel
 - Check Supabase function logs for errors
 
-### Wrong Agents Returned
+### Wrong Closers Returned
 - Run SQL query directly: `SELECT * FROM get_eligible_agents_with_upline_check('AMAM', 'California')`
 - Verify agent licenses in database
 - Check upline relationships in agent_upline_hierarchy table

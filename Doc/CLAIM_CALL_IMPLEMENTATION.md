@@ -103,7 +103,7 @@
 - ✅ **Consistent Behavior:** Same functionality as verification dashboard
 
 ### **Operational Benefits:**
-- ✅ **Any Time Claiming:** Agents can claim calls at any stage
+- ✅ **Any Time Claiming:** Closers can claim calls at any stage
 - ✅ **Unified Workflow:** Same modal system across dashboard and verification
 - ✅ **Complete Logging:** Full audit trail of claim activities
 - ✅ **Notification System:** Center gets immediate updates on claims

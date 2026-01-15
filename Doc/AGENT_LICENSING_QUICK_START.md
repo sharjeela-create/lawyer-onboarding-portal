@@ -35,14 +35,14 @@
 3. Modify carrier and state lists
 4. Run the script in Supabase SQL Editor
 
-### Step 2: Find Eligible Agents
+### Step 2: Find Eligible Closers
 
 **Option A: Use the UI**
 1. Navigate to **Menu → Agent Licensing**
-2. Select "Find Agents" tab
+2. Select "Find Closers" tab
 3. Enter carrier name (e.g., "Americo")
 4. Enter state name (e.g., "California")
-5. Click "Search for Eligible Agents"
+5. Click "Search for Eligible Closers"
 
 **Option B: Use SQL Query**
 ```sql
@@ -51,7 +51,7 @@ SELECT * FROM get_eligible_agents('Americo', 'California');
 
 ### Step 3: Integrate Into Your Workflow
 
-**Example: Filter Agents in Claim Modal**
+**Example: Filter Closers in Claim Modal**
 ```typescript
 // In your claim modal component
 const fetchEligibleAgents = async (lead) => {
@@ -154,7 +154,7 @@ WHERE asl.agent_user_id = 'YOUR_AGENT_USER_ID'
 ORDER BY s.state_name;
 ```
 
-### Find Eligible Agents for Lead
+### Find Eligible Closers for Lead
 ```sql
 -- Example: Americo in California
 SELECT * FROM get_eligible_agents('Americo', 'California');

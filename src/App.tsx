@@ -212,16 +212,7 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/reports" 
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Reports">
-                    <ReportsPage />
-                  </AppShell>
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="/reports" element={<NotFound />} />
             <Route 
               path="/bulk-lookup" 
               element={
@@ -256,7 +247,7 @@ const App = () => (
               path="/agent-licensing" 
               element={
                 <ProtectedRoute>
-                  <AppShell title="Find Eligible Agents">
+                  <AppShell title="Find Eligible Closers">
                     <AgentLicensing />
                   </AppShell>
                 </ProtectedRoute>
@@ -332,21 +323,7 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/admin-analytics" 
-              element={
-                <ProtectedRoute>
-                  <AppShell title="Admin Analytics">
-                    <AdminAnalytics />
-                  </AppShell>
-                </ProtectedRoute>
-              }
-            >
-              <Route path="agents" element={<AgentsPage />} />
-              <Route path="vendors" element={<VendorsPage />} />
-              <Route path="daily" element={<DailyPage />} />
-              <Route path="carriers" element={<CarriersPage />} />
-            </Route>
+            <Route path="/admin-analytics/*" element={<NotFound />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
