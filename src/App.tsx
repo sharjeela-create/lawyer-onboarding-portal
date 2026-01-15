@@ -12,6 +12,7 @@ import ReportsPage from "./pages/Reports";
 import Auth from "./pages/Auth";
 import CenterAuth from "./pages/CenterAuth";
 import Dashboard from "./pages/Dashboard";
+import Retainers from "./pages/Retainers";
 import CenterLeadPortal from "./pages/CenterLeadPortal";
 import CenterCalendarView from "./pages/CenterCalendarView";
 import CallbackRequestPage from "./pages/CallbackRequestPage";
@@ -55,6 +56,16 @@ const App = () => (
             <Route path="/center-auth" element={<CenterAuth />} />
             <Route 
               path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Retainers">
+                    <Retainers />
+                  </AppShell>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/manager-dashboard" 
               element={
                 <ProtectedRoute>
                   <AppShell title="Dashboard">

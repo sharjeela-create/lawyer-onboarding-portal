@@ -18,8 +18,6 @@ interface GridToolbarProps {
   onDateFromFilterChange: (date: Date | undefined) => void;
   dateToFilter?: Date;
   onDateToFilterChange: (date: Date | undefined) => void;
-  bufferAgentFilter: string;
-  onBufferAgentFilterChange: (value: string) => void;
   licensedAgentFilter: string;
   onLicensedAgentFilterChange: (value: string) => void;
   assignedAttorneyFilter: string;
@@ -47,8 +45,6 @@ export const GridToolbar = ({
   onDateFromFilterChange,
   dateToFilter,
   onDateToFilterChange,
-  bufferAgentFilter,
-  onBufferAgentFilterChange,
   licensedAgentFilter,
   onLicensedAgentFilterChange,
   assignedAttorneyFilter,
@@ -70,20 +66,6 @@ export const GridToolbar = ({
   const ALL_OPTION = "__ALL__";
   const { leadVendors } = useCenters();
   // Filter options (these should match your database values)
-  const bufferAgentOptions = [
-    "All Buffer Agents",
-    "Kyla",
-    "Justine",
-    "Nicole Mejia",
-    "Angelica",
-    "Laiza Batain",
-    "Aqib Afridi",
-    "Qasim Raja",
-    "Noah Akins",
-    "Hussain Khan",
-    "N/A",
-  ];
-
   const licensedAgentOptions = [
     "All Licensed Agents",
     "Claudia",
@@ -160,7 +142,6 @@ export const GridToolbar = ({
     onDateFilterChange(undefined);
     onDateFromFilterChange(undefined);
     onDateToFilterChange(undefined);
-    onBufferAgentFilterChange(ALL_OPTION);
     onLicensedAgentFilterChange(ALL_OPTION);
     onAssignedAttorneyFilterChange(ALL_OPTION);
     onLeadVendorFilterChange(ALL_OPTION);
@@ -171,7 +152,6 @@ export const GridToolbar = ({
   };
 
   const hasActiveFilters = searchTerm || dateFilter || dateFromFilter || dateToFilter ||
-    (bufferAgentFilter && bufferAgentFilter !== ALL_OPTION) || 
     (licensedAgentFilter && licensedAgentFilter !== ALL_OPTION) || 
     (assignedAttorneyFilter && assignedAttorneyFilter !== ALL_OPTION) ||
     (leadVendorFilter && leadVendorFilter !== ALL_OPTION) || 
@@ -331,27 +311,7 @@ export const GridToolbar = ({
       </div>
 
       {/* Second Row: Additional Filters */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-4">
-        {/* Buffer Agent Filter */}
-        <div>
-          <Label className="text-sm font-medium">
-            Buffer Agent
-            {bufferAgentFilter && bufferAgentFilter !== ALL_OPTION && <span className="text-blue-600 ml-1">●</span>}
-          </Label>
-          <Select value={bufferAgentFilter || ALL_OPTION} onValueChange={onBufferAgentFilterChange}>
-            <SelectTrigger className={cn("mt-1", bufferAgentFilter && bufferAgentFilter !== ALL_OPTION && "ring-2 ring-blue-200")}>
-              <SelectValue placeholder="All Buffer Agents" />
-            </SelectTrigger>
-            <SelectContent>
-              {bufferAgentOptions.map((agent) => (
-                <SelectItem key={agent} value={agent === "All Buffer Agents" ? ALL_OPTION : agent}>
-                  {agent}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
         {/* Licensed Agent Filter */}
         <div>
           <Label className="text-sm font-medium">

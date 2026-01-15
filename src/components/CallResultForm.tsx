@@ -1668,26 +1668,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
               <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
                 <h3 className="font-semibold text-gray-800">Call Information</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="bufferAgent">Buffer Agent</Label>
-                    <Select value={bufferAgent} onValueChange={setBufferAgent}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select buffer agent" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {agents.map((agent) => (
-                          <SelectItem key={agent.id} value={agent.name}>
-                            {agent.name}
-                          </SelectItem>
-                        ))}
-                        <SelectItem key="na_buffer" value="N/A">
-                          N/A
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <Label htmlFor="agentWhoTookCall">Agent who took the call</Label>
                     <Select value={agentWhoTookCall} onValueChange={setAgentWhoTookCall}>
@@ -1971,26 +1952,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
               <h3 className="font-semibold text-orange-800">Application Not Submitted</h3>
               
               {/* Call Information for Not Submitted */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="bufferAgentNotSubmitted">Buffer Agent</Label>
-                  <Select value={bufferAgent} onValueChange={setBufferAgent}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select buffer agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.name}>
-                          {agent.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem key="na_buffer_ns" value="N/A">
-                        N/A
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Label htmlFor="agentWhoTookCallNotSubmitted">
                     Agent who took the call <span className="text-red-500">*</span>

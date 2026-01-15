@@ -48,20 +48,6 @@ interface EditableRowProps {
   attorneys?: AttorneyProfile[];
 }
 
-// Dropdown options (same as CallResultForm)
-const bufferAgentOptions = [
-    "All Buffer Agents",
-    "Justine",
-    "Kyla",
-    "Laiza Batain",
-    "Angelica",
-    "Aqib Afridi",
-    "Qasim Raja",
-    "Noah Akins",
-    "Hussain Khan",
-    "N/A"
-];
-
 const agentOptions = [
   "Claudia", "Lydia", "Zack","Tatumn","Angy", "Benjamin", "Erica", "N/A", "Isaac"
 ];
@@ -229,23 +215,6 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
       default:
         return 'bg-gray-500 text-white';
     }
-  };
-
-  // Buffer Agent color badge
-  const getBufferAgentBadge = (agent?: string) => {
-    const colors: { [key: string]: string } = {
-      'N/A': 'bg-gray-500 text-white',
-      'Ira': 'bg-blue-500 text-white',
-      'Burney': 'bg-green-500 text-white',
-      'Kyla': 'bg-purple-500 text-white',
-      'Bryan': 'bg-orange-500 text-white',
-      'Justine': 'bg-pink-500 text-white',
-      'Isaac': 'bg-indigo-500 text-white',
-      'Landon': 'bg-teal-500 text-white',
-      'Juan': 'bg-red-500 text-white',
-      'Tatumn': 'bg-orange-500 text-white'
-    };
-    return colors[agent || ''] || 'bg-gray-400 text-white';
   };
 
   // Agent color badge
@@ -551,27 +520,6 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
           {/* Agent Information */}
           <div className="space-y-4">
             <h3 className="font-semibold text-lg border-b pb-2">Agent Information</h3>
-            
-            <div>
-              <Label className="text-sm font-medium">Buffer Agent</Label>
-              {isEditing ? (
-                <Select
-                  value={editData.buffer_agent || ''}
-                  onValueChange={(value) => updateField('buffer_agent', value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select buffer agent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bufferAgentOptions.map(option => (
-                      <SelectItem key={option} value={option}>{option}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="mt-1 p-2 bg-muted rounded">{row.buffer_agent || 'N/A'}</div>
-              )}
-            </div>
 
             <div>
               <Label className="text-sm font-medium">Agent</Label>
@@ -914,23 +862,6 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
             />
           </td>
 
-          {/* Buffer Agent */}
-          <td className="border border-border px-3 py-2">
-            <Select
-              value={editData.buffer_agent || ''}
-              onValueChange={(value) => updateField('buffer_agent', value)}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Buffer Agent" />
-              </SelectTrigger>
-              <SelectContent>
-                {bufferAgentOptions.map(option => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </td>
-
           {/* Agent */}
           <td className="border border-border px-3 py-2">
             <Select
@@ -1096,15 +1027,6 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
           <div className="text-gray-700">
             {row.client_phone_number || ''}
           </div>
-        </td>
-
-        {/* Buffer Agent */}
-        <td className="border border-border px-2 py-2 text-sm w-24">
-          {row.buffer_agent ? (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap inline-block ${getBufferAgentBadge(row.buffer_agent)}`}>
-              {row.buffer_agent}
-            </span>
-          ) : ''}
         </td>
 
         {/* Agent */}

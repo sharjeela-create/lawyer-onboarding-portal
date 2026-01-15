@@ -4,6 +4,7 @@ import {
   BarChart3,
   Grid3X3,
   LayoutDashboard,
+  Users,
   LogOut,
   Zap,
   Eye,
@@ -153,8 +154,14 @@ const AppShell = ({
     const items: NavItem[] = [
       {
         label: 'Dashboard',
-        to: '/dashboard',
+        to: '/manager-dashboard',
         icon: <LayoutDashboard className="h-4 w-4 text-current" />,
+        show: isAuthorizedUser && hasNavigationAccess && !restricted,
+      },
+      {
+        label: 'Retainers',
+        to: '/dashboard',
+        icon: <Users className="h-4 w-4 text-current" />,
         end: true,
         show: !isCenterUser && !restricted,
       },

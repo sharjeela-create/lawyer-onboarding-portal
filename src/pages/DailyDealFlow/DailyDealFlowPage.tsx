@@ -61,7 +61,6 @@ const DailyDealFlowPage = () => {
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [dateFromFilter, setDateFromFilter] = useState<Date | undefined>(undefined);
   const [dateToFilter, setDateToFilter] = useState<Date | undefined>(undefined);
-  const [bufferAgentFilter, setBufferAgentFilter] = useState(ALL_OPTION);
   const [licensedAgentFilter, setLicensedAgentFilter] = useState(ALL_OPTION);
   const [assignedAttorneyFilter, setAssignedAttorneyFilter] = useState(ALL_OPTION);
   const [leadVendorFilter, setLeadVendorFilter] = useState(ALL_OPTION);
@@ -149,10 +148,6 @@ const DailyDealFlowPage = () => {
       }
 
       // Apply other filters
-      if (bufferAgentFilter && bufferAgentFilter !== ALL_OPTION) {
-        query = query.eq('buffer_agent', bufferAgentFilter);
-      }
-
       if (licensedAgentFilter && licensedAgentFilter !== ALL_OPTION) {
         query = query.eq('licensed_agent_account', licensedAgentFilter);
       }
@@ -191,7 +186,7 @@ const DailyDealFlowPage = () => {
 
       // Apply search filter if set
       if (searchTerm) {
-        query = query.or(`insured_name.ilike.%${searchTerm}%,client_phone_number.ilike.%${searchTerm}%,submission_id.ilike.%${searchTerm}%,lead_vendor.ilike.%${searchTerm}%,agent.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%,carrier.ilike.%${searchTerm}%,licensed_agent_account.ilike.%${searchTerm}%,buffer_agent.ilike.%${searchTerm}%`);
+        query = query.or(`insured_name.ilike.%${searchTerm}%,client_phone_number.ilike.%${searchTerm}%,submission_id.ilike.%${searchTerm}%,lead_vendor.ilike.%${searchTerm}%,agent.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%,carrier.ilike.%${searchTerm}%,licensed_agent_account.ilike.%${searchTerm}%`);
       }
 
       const { data: pageData, error, count } = await query;
@@ -233,7 +228,7 @@ const DailyDealFlowPage = () => {
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when filters change
     fetchData(1);
-  }, [dateFilter, dateFromFilter, dateToFilter, bufferAgentFilter, licensedAgentFilter, assignedAttorneyFilter, leadVendorFilter, statusFilter, callResultFilter, retentionFilter, incompleteUpdatesFilter]);
+  }, [dateFilter, dateFromFilter, dateToFilter, licensedAgentFilter, assignedAttorneyFilter, leadVendorFilter, statusFilter, callResultFilter, retentionFilter, incompleteUpdatesFilter]);
 
   // Refetch when search term changes (debounced)
   useEffect(() => {
@@ -282,10 +277,6 @@ const DailyDealFlowPage = () => {
         query = query.lte('date', dateToStr);
       }
 
-      if (bufferAgentFilter && bufferAgentFilter !== ALL_OPTION) {
-        query = query.eq('buffer_agent', bufferAgentFilter);
-      }
-
       if (licensedAgentFilter && licensedAgentFilter !== ALL_OPTION) {
         query = query.eq('licensed_agent_account', licensedAgentFilter);
       }
@@ -316,7 +307,7 @@ const DailyDealFlowPage = () => {
       }
 
       if (searchTerm) {
-        query = query.or(`insured_name.ilike.%${searchTerm}%,client_phone_number.ilike.%${searchTerm}%,submission_id.ilike.%${searchTerm}%,lead_vendor.ilike.%${searchTerm}%,agent.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%,carrier.ilike.%${searchTerm}%,licensed_agent_account.ilike.%${searchTerm}%,buffer_agent.ilike.%${searchTerm}%`);
+        query = query.or(`insured_name.ilike.%${searchTerm}%,client_phone_number.ilike.%${searchTerm}%,submission_id.ilike.%${searchTerm}%,lead_vendor.ilike.%${searchTerm}%,agent.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%,carrier.ilike.%${searchTerm}%,licensed_agent_account.ilike.%${searchTerm}%`);
       }
 
       const { data: exportData, error } = await query;
@@ -347,7 +338,6 @@ const DailyDealFlowPage = () => {
         'Insured Name',
         'Lead Vendor',
         'Phone Number',
-        'Buffer Agent',
         'Agent',
         'Licensed Agent',
         'Status',
@@ -377,7 +367,6 @@ const DailyDealFlowPage = () => {
           row.insured_name || '',
           row.lead_vendor || '',
           row.client_phone_number || '',
-          row.buffer_agent || '',
           row.agent || '',
           row.licensed_agent_account || '',
           row.status || '',
@@ -543,8 +532,6 @@ const DailyDealFlowPage = () => {
           onDateFromFilterChange={handleDateFromFilterChange}
           dateToFilter={dateToFilter}
           onDateToFilterChange={handleDateToFilterChange}
-          bufferAgentFilter={bufferAgentFilter}
-          onBufferAgentFilterChange={setBufferAgentFilter}
           licensedAgentFilter={licensedAgentFilter}
           onLicensedAgentFilterChange={setLicensedAgentFilter}
           assignedAttorneyFilter={assignedAttorneyFilter}

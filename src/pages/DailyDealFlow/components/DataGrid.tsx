@@ -44,7 +44,7 @@ export const DataGrid = ({
   useEffect(() => {
     const fetchDistinctValues = async () => {
       try {
-        const fields = ['lead_vendor', 'buffer_agent', 'agent', 'licensed_agent_account'];
+        const fields = ['lead_vendor', 'agent', 'licensed_agent_account'];
         const distinctValues: {[key: string]: string[]} = {};
 
         for (const field of fields) {
@@ -79,7 +79,6 @@ export const DataGrid = ({
   const groupByOptions = [
     { value: 'none', label: 'No Grouping' },
     { value: 'lead_vendor', label: 'Lead Vendor' },
-    { value: 'buffer_agent', label: 'Buffer Agent' },
     { value: 'agent', label: 'Agent' },
     { value: 'licensed_agent_account', label: 'Licensed Agent' },
     { value: 'status', label: 'Status' },
@@ -91,7 +90,7 @@ export const DataGrid = ({
   ];
 
   const columns = [
-    "S.No", "Date", "Lead Vendor", "Insured Name", "Phone Number", "Buffer Agent", "Agent", "Assigned Attorney", "Status",
+    "S.No", "Date", "Lead Vendor", "Insured Name", "Phone Number", "Agent", "Assigned Attorney", "Status",
     "Call Result", "Notes"
   ];
   
@@ -373,7 +372,6 @@ export const DataGrid = ({
                   case 'Lead Vendor': return 'lead_vendor';
                   case 'Insured Name': return 'insured_name';
                   case 'Phone Number': return 'client_phone_number';
-                  case 'Buffer Agent': return 'buffer_agent';
                   case 'Agent': return 'agent';
                   case 'Assigned Attorney': return 'assigned_attorney_id';
                   case 'Status': return 'status';
@@ -398,7 +396,6 @@ export const DataGrid = ({
                   column === 'Lead Vendor' ? 'w-20' :
                   column === 'Insured Name' ? 'w-32' :
                   column === 'Phone Number' ? 'w-28' :
-                  column === 'Buffer Agent' ? 'w-24' :
                   column === 'Agent' ? 'w-20' :
                   column === 'Assigned Attorney' ? 'w-28' :
                   column === 'Status' ? 'w-32' :

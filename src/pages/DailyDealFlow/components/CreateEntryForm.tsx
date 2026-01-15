@@ -19,20 +19,6 @@ interface CreateEntryFormProps {
   onSuccess: () => void;
 }
 
-// Same dropdown options as EditableRow
-const bufferAgentOptions = [
-    "All Buffer Agents",
-    "Justine",
-    "Kyla",
-    "Laiza Batain",
-    "Angelica",
-    "Aqib Afridi",
-    "Qasim Raja",
-    "Noah Akins",
-    "Hussain Khan",
-    "N/A"
-];
-
 const agentOptions = [
   "Claudia", "Lydia", "Zack", "Tatumn","Angy", "Benjamin", "N/A", "Isaac"
 ];
@@ -375,26 +361,6 @@ export const CreateEntryForm = ({ onSuccess }: CreateEntryFormProps) => {
             {/* Agent Information Section */}
             <div className="space-y-4">
               <h3 className="font-semibold text-lg border-b pb-2">Agent Information</h3>
-              
-              {/* Buffer Agent */}
-              <div>
-                <label className="text-sm font-medium">Buffer Agent</label>
-                <Select
-                  value={formData.buffer_agent}
-                  onValueChange={(value) => updateField('buffer_agent', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bufferAgentOptions.map((agent) => (
-                      <SelectItem key={agent} value={agent}>
-                        {agent}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
               {/* Agent */}
               <div>

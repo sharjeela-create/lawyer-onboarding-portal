@@ -144,12 +144,9 @@ export const VerificationDashboard = () => {
   const [claimModalOpen, setClaimModalOpen] = useState(false);
   const [claimSessionId, setClaimSessionId] = useState<string | null>(null);
   const [claimSubmissionId, setClaimSubmissionId] = useState<string | null>(null);
-  const [claimAgentType, setClaimAgentType] = useState<'buffer' | 'licensed'>('buffer');
-  const [claimBufferAgent, setClaimBufferAgent] = useState<string>("");
   const [claimLicensedAgent, setClaimLicensedAgent] = useState<string>("");
   const [claimLoading, setClaimLoading] = useState(false);
   const [claimLead, setClaimLead] = useState<any>(null);
-  const [bufferAgents, setBufferAgents] = useState<any[]>([]);
   const [licensedAgents, setLicensedAgents] = useState<any[]>([]);
   const [fetchingAgents, setFetchingAgents] = useState(false);
 
@@ -168,20 +165,17 @@ export const VerificationDashboard = () => {
     setClaimLead(lead);
     if (agentTypeOverride === 'licensed') {
       setModalType('licensed');
-      setClaimAgentType('licensed');
       setClaimLicensedAgent("");
       fetchAgents('licensed');
     } else {
       setModalType('dropped');
-      setClaimAgentType('buffer');
-      setClaimBufferAgent("");
       setClaimLicensedAgent("");
-      fetchAgents('buffer');
+      fetchAgents('licensed');
     }
   };
 
   // Fetch agents for dropdowns
-  const fetchAgents = async (type: 'buffer' | 'licensed') => {
+  const fetchAgents = async (type: 'licensed') => {
     setFetchingAgents(true);
     try {
       const { data: agentStatus } = await supabase
@@ -191,14 +185,16 @@ export const VerificationDashboard = () => {
       const ids = agentStatus?.map(a => a.user_id) || [];
       let profiles = [];
       if (ids.length > 0) {
-        const { data: fetchedProfiles } = await supabase
-          .from('profiles')
-          .select('user_id, display_name')
+        const { data: fetchedProfiles } = await (supabase as any)
+          .from('app_users')
+          .select('user_id, display_name, email')
           .in('user_id', ids);
-        profiles = fetchedProfiles || [];
+        profiles = (fetchedProfiles || []).map((u: any) => ({
+          user_id: u.user_id,
+          display_name: u.display_name || (u.email ? String(u.email).split('@')[0] : '')
+        }));
       }
-      if (type === 'buffer') setBufferAgents(profiles);
-      else setLicensedAgents(profiles);
+      setLicensedAgents(profiles);
     } catch (error) {
       // Optionally handle error
     } finally {
@@ -206,22 +202,14 @@ export const VerificationDashboard = () => {
     }
   };
 
-  // Handle workflow type change
-  const handleAgentTypeChange = (type: 'buffer' | 'licensed') => {
-    setClaimAgentType(type);
-    setClaimBufferAgent("");
-    setClaimLicensedAgent("");
-    fetchAgents(type);
-  };
-
   const handleClaimDroppedCall = async () => {
     setClaimLoading(true);
     try {
-      let agentId = claimAgentType === 'buffer' ? claimBufferAgent : claimLicensedAgent;
+      const agentId = claimLicensedAgent;
       if (!agentId) {
         toast({
           title: "Error",
-          description: `Please select a ${claimAgentType === 'buffer' ? 'buffer' : 'licensed'} agent`,
+          description: "Please select a licensed agent",
           variant: "destructive",
         });
         setClaimLoading(false);
@@ -231,21 +219,14 @@ export const VerificationDashboard = () => {
       const updateFields: any = {
         status: 'in_progress'
       };
-      if (claimAgentType === 'buffer') {
-        updateFields.buffer_agent_id = agentId;
-        updateFields.licensed_agent_id = null;
-      } else {
-        updateFields.licensed_agent_id = agentId;
-      }
+      updateFields.licensed_agent_id = agentId;
       await supabase
         .from('verification_sessions')
         .update(updateFields)
         .eq('id', claimSessionId);
 
       // Log the call claim event
-      const agentName = claimAgentType === 'buffer'
-        ? bufferAgents.find(a => a.user_id === agentId)?.display_name || 'Buffer Agent'
-        : licensedAgents.find(a => a.user_id === agentId)?.display_name || 'Licensed Agent';
+      const agentName = licensedAgents.find(a => a.user_id === agentId)?.display_name || 'Licensed Agent';
 
       const { customerName, leadVendor } = await getLeadInfo(claimSubmissionId!);
       
@@ -260,14 +241,14 @@ export const VerificationDashboard = () => {
         .single();
       
       // If a licensed agent is claiming a call that was previously with another licensed agent
-      if (claimAgentType === 'licensed' && currentSession?.licensed_agent_id && currentSession.licensed_agent_id !== agentId) {
+      if (currentSession?.licensed_agent_id && currentSession.licensed_agent_id !== agentId) {
         eventType = 'transferred_to_licensed_agent';
       }
       
       await logCallUpdate({
         submissionId: claimSubmissionId!,
         agentId: agentId,
-        agentType: claimAgentType,
+        agentType: 'licensed',
         agentName: agentName,
         eventType: eventType,
         eventDetails: {
@@ -287,7 +268,7 @@ export const VerificationDashboard = () => {
         body: {
           type: 'reconnected',
           submissionId: claimSubmissionId,
-          agentType: claimAgentType,
+          agentType: 'licensed',
           agentName: agentName,
           leadData: claimLead
         }
@@ -295,9 +276,7 @@ export const VerificationDashboard = () => {
 
       toast({
         title: "Call Reconnected",
-        description: `${claimAgentType === 'buffer'
-          ? bufferAgents.find(a => a.user_id === agentId)?.display_name
-          : licensedAgents.find(a => a.user_id === agentId)?.display_name} get connected with ${claimLead?.customer_full_name}`,
+        description: `${licensedAgents.find(a => a.user_id === agentId)?.display_name} get connected with ${claimLead?.customer_full_name}`,
       });
 
       setClaimModalOpen(false);
@@ -757,15 +736,12 @@ export const VerificationDashboard = () => {
     <ClaimDroppedCallModal
       open={claimModalOpen && modalType === 'dropped'}
       loading={claimLoading}
-      agentType={claimAgentType}
-      bufferAgents={bufferAgents}
       licensedAgents={licensedAgents}
       fetchingAgents={fetchingAgents}
-      claimBufferAgent={claimBufferAgent}
       claimLicensedAgent={claimLicensedAgent}
-      onAgentTypeChange={handleAgentTypeChange}
-      onBufferAgentChange={setClaimBufferAgent}
       onLicensedAgentChange={setClaimLicensedAgent}
+      isRetentionCall={false}
+      onRetentionCallChange={() => {}}
       onCancel={() => setClaimModalOpen(false)}
       onClaim={handleClaimDroppedCall}
     />
@@ -776,7 +752,9 @@ export const VerificationDashboard = () => {
       licensedAgents={licensedAgents}
       fetchingAgents={fetchingAgents}
       claimLicensedAgent={claimLicensedAgent}
+      isRetentionCall={false}
       onLicensedAgentChange={setClaimLicensedAgent}
+      onRetentionCallChange={() => {}}
       onCancel={() => setClaimModalOpen(false)}
       onClaim={handleClaimDroppedCall}
     />
