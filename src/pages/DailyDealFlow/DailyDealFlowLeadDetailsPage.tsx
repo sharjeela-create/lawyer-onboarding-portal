@@ -354,7 +354,7 @@ const DailyDealFlowLeadDetailsPage = () => {
                       disabled={disabled}
                     />
                   </Field>
-                  <Field label="Insured Name">
+                  <Field label="Customer Name">
                     <Input
                       className={inputCls}
                       value={form.insured_name ?? ""}

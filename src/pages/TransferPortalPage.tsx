@@ -310,7 +310,7 @@ const TransferPortalPage = () => {
     const headers = [
       'Submission ID',
       'Date',
-      'Insured Name',
+      'Customer Name',
       'Lead Vendor',
       'Phone Number',
       'Buffer Agent',
