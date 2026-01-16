@@ -138,10 +138,30 @@ const Retainers = () => {
 
   const fetchLeads = async (searchTerm?: string) => {
     try {
+      const pendingApprovalStatus = 'Pending Approval';
+
+      const { data: pendingTransfers, error: pendingTransfersError } = await supabase
+        .from('daily_deal_flow')
+        .select('submission_id')
+        .eq('status', pendingApprovalStatus)
+        .limit(5000);
+
+      if (pendingTransfersError) throw pendingTransfersError;
+
+      const pendingSubmissionIds = (pendingTransfers || [])
+        .map((r: any) => r.submission_id)
+        .filter(Boolean);
+
+      if (pendingSubmissionIds.length === 0) {
+        setLeads([]);
+        return;
+      }
+
       // Query only the leads table (no joins)
       let query = supabase
         .from('leads')
         .select(`*`, { count: 'exact' })
+        .in('submission_id', pendingSubmissionIds)
         .order('created_at', { ascending: false });
 
       // If searching, apply server-side search on common lead fields

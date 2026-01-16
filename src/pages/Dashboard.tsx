@@ -21,7 +21,7 @@ const Dashboard = () => {
     let cancelled = false;
 
     const run = async () => {
-      const pendingApprovalStatus = 'pending approval';
+      const pendingApprovalStatus = 'Pending Approval';
 
       const [leadsRes, dailyTotalRes, dailyPendingRes, agentsRes] = await Promise.all([
         supabase.from('leads').select('*', { count: 'exact', head: true }),
@@ -35,10 +35,10 @@ const Dashboard = () => {
 
       if (cancelled) return;
 
-      const retainers = leadsRes.count ?? 0;
+      const retainers = dailyPendingRes.count ?? 0;
       const dailyTotal = dailyTotalRes.count ?? 0;
       const conversions = dailyPendingRes.count ?? 0;
-      const transfers = Math.max(0, dailyTotal - conversions);
+      const transfers = dailyTotal;
       const agents = agentsRes.count ?? 0;
 
       setStats({ retainers, transfers, conversions, agents });

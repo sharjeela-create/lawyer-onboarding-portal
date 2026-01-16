@@ -176,12 +176,9 @@ const TransferPortalPage = () => {
     try {
       setRefreshing(true);
 
-      const pendingApprovalStatus = "pending approval";
-
       let transfersQuery = supabase
         .from('daily_deal_flow')
         .select('*')
-        .neq('status', pendingApprovalStatus)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -193,8 +190,7 @@ const TransferPortalPage = () => {
         transfersQuery,
         supabase
           .from('daily_deal_flow')
-          .select('*', { count: 'exact', head: true })
-          .neq('status', pendingApprovalStatus),
+          .select('*', { count: 'exact', head: true }),
       ]);
 
       if (transfersRes.error) {
