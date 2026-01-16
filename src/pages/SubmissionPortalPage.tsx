@@ -269,12 +269,12 @@ const SubmissionPortalPage = () => {
     try {
       setRefreshing(true);
 
-      const pendingApprovalStatus = "pending approval";
+      const pendingApprovalStatus = "Pending Approval";
 
       let transfersQuery = supabase
         .from('daily_deal_flow')
         .select('*')
-        .neq('status', pendingApprovalStatus)
+        .eq('status', pendingApprovalStatus)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -298,6 +298,8 @@ const SubmissionPortalPage = () => {
       let submissionQuery = (supabase as any)
         .from('submission_portal')
         .select('*');
+
+      submissionQuery = submissionQuery.eq('status', pendingApprovalStatus);
 
       // Apply date filter if set
       if (dateFilter) {
