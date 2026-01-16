@@ -39,7 +39,15 @@ const statusOptions = [
   "Previously Sold BPO",
   "Needs BPO Callback",
   "Application Withdrawn",
-  "Pending Information"
+  "Pending Information",
+  "Information Verification",
+  "Attorney Submission",
+  "Insurance Verification",
+  "Retainer Process (Email)",
+  "Retainer Process (Postal Mail)",
+  "Retainer Signed Pending",
+  "Retainer Signed",
+  "Attorney Decision"
 ];
 
 const carrierOptions = [
@@ -83,6 +91,7 @@ const returnedToCenterDQReasonOptions = [
   "TCPA",
   "Already a DQ in our System",
   "Already has Attorney Involved",
+  "SOL Expired",
   "Other"
 ];
 

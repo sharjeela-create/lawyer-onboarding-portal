@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Pencil, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAttorneys } from "@/hooks/useAttorneys";
+import { fetchLicensedCloserOptions } from "@/lib/agentOptions";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -89,6 +90,24 @@ const DailyDealFlowLeadDetailsPage = () => {
   const [record, setRecord] = useState<DailyDealFlowRecord | null>(null);
   const [form, setForm] = useState<DailyDealFlowRecord | null>(null);
   const { attorneys, loading: attorneysLoading } = useAttorneys();
+  const [closers, setClosers] = useState<Array<{ key: string; label: string }>>([]);
+  const [closersLoading, setClosersLoading] = useState(false);
+
+  useEffect(() => {
+    const run = async () => {
+      setClosersLoading(true);
+      try {
+        const options = await fetchLicensedCloserOptions();
+        setClosers(options);
+      } catch (e) {
+        setClosers([]);
+      } finally {
+        setClosersLoading(false);
+      }
+    };
+
+    run();
+  }, []);
 
   useEffect(() => {
     const run = async () => {
@@ -461,29 +480,24 @@ const DailyDealFlowLeadDetailsPage = () => {
             <Card>
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Buffer Agent">
-                    <Input
-                      className={inputCls}
-                      value={form.buffer_agent ?? ""}
-                      onChange={(e) => setString("buffer_agent", e.target.value)}
+                  <Field label="Closer">
+                    <Select
+                      value={form.agent || "__NONE__"}
+                      onValueChange={(value) => setString("agent", value === "__NONE__" ? "" : value)}
                       disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Agent">
-                    <Input
-                      className={inputCls}
-                      value={form.agent ?? ""}
-                      onChange={(e) => setString("agent", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Licensed Agent Account">
-                    <Input
-                      className={inputCls}
-                      value={form.licensed_agent_account ?? ""}
-                      onChange={(e) => setString("licensed_agent_account", e.target.value)}
-                      disabled={disabled}
-                    />
+                    >
+                      <SelectTrigger className={inputCls}>
+                        <SelectValue placeholder={closersLoading ? "Loading closers…" : "Select closer"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__NONE__">Unassigned</SelectItem>
+                        {closers.map((c) => (
+                          <SelectItem key={c.key} value={c.label}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </Field>
                   <Field label="Assigned Attorney">
                     <Select

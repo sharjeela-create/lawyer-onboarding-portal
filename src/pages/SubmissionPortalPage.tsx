@@ -15,6 +15,66 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, RefreshCw, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAttorneys } from "@/hooks/useAttorneys";
+
+const kanbanStages = [
+  { key: "stage_1", label: "Information Verification" },
+  { key: "stage_2", label: "Attorney Submission" },
+  { key: "stage_3", label: "Insurance Verification" },
+  { key: "stage_4", label: "Retainer Process (Email)" },
+  { key: "stage_5", label: "Retainer Process (Postal Mail)" },
+  { key: "stage_6", label: "Retainer Signed Pending" },
+  { key: "stage_7", label: "Retainer Signed" },
+  { key: "stage_8", label: "Attorney Decision" },
+] as const;
+
+type StageKey = (typeof kanbanStages)[number]["key"];
+
+const stageSlugMap: Record<string, StageKey> = {
+  stage_1_information_verification: "stage_1",
+  stage_2_attorney_submission: "stage_2",
+  stage_3_insurance_verification: "stage_3",
+  stage_4_retainer_process_email: "stage_4",
+  stage_5_retainer_process_postal_mail: "stage_5",
+  stage_6_retainer_signed_pending: "stage_6",
+  stage_7_retainer_signed: "stage_7",
+  stage_8_attorney_decision: "stage_8",
+  information_verification: "stage_1",
+  attorney_submission: "stage_2",
+  insurance_verification: "stage_3",
+  retainer_process_email: "stage_4",
+  retainer_process_postal_mail: "stage_5",
+  retainer_signed_pending: "stage_6",
+  retainer_signed: "stage_7",
+  attorney_decision: "stage_8",
+};
+
+const deriveStageKey = (row: SubmissionPortalRow): StageKey => {
+  const status = (row.status || "").trim();
+  if (!status || status === "Pending Approval") return "stage_1";
+
+  const slug = status
+    .toLowerCase()
+    .replace(/\(email\)/g, "email")
+    .replace(/\(postal mail\)/g, "postal mail")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/_{2,}/g, "_")
+    .replace(/^_|_$/g, "");
+
+  return stageSlugMap[slug] ?? "stage_1";
+};
+
+const getStatusForStage = (stageKey: StageKey) => {
+  if (stageKey === "stage_1") return "Pending Approval";
+  return kanbanStages.find((s) => s.key === stageKey)?.label ?? "Pending Approval";
+};
+
+const buildAllowedStatuses = () => {
+  const pendingApprovalStatus = "Pending Approval";
+  const withPrefix = kanbanStages.map((s) => s.label);
+  const withoutPrefix = kanbanStages.map((s) => s.label.replace(/^Stage\s+\d+\s*:\s*/i, ""));
+  return Array.from(new Set([pendingApprovalStatus, ...withPrefix, ...withoutPrefix]));
+};
 
 export interface SubmissionPortalRow {
   id: string;
@@ -26,6 +86,7 @@ export interface SubmissionPortalRow {
   buffer_agent?: string;
   agent?: string;
   licensed_agent_account?: string;
+  assigned_attorney_id?: string | null;
   status?: string;
   call_result?: string;
   carrier?: string;
@@ -69,11 +130,24 @@ const SubmissionPortalPage = () => {
   const [statusFilter, setStatusFilter] = useState("__ALL__");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showDuplicates, setShowDuplicates] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
   const [dataCompletenessFilter, setDataCompletenessFilter] = useState("__ALL__");
-  const itemsPerPage = 50;
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
+  const [columnPage, setColumnPage] = useState<Record<string, number>>({});
 
   const { toast } = useToast();
+  const { attorneys } = useAttorneys();
+
+  const attorneyById = useMemo(() => {
+    const map: Record<string, string> = {};
+    (attorneys || []).forEach((a) => {
+      if (!a.user_id) return;
+      const label = (a.full_name || a.primary_email || "").trim();
+      if (!label) return;
+      map[a.user_id] = label;
+    });
+    return map;
+  }, [attorneys]);
 
   // Remove duplicates based on insured_name, client_phone_number, and lead_vendor
   const removeDuplicates = (records: SubmissionPortalRow[]): SubmissionPortalRow[] => {
@@ -269,12 +343,12 @@ const SubmissionPortalPage = () => {
     try {
       setRefreshing(true);
 
-      const pendingApprovalStatus = "Pending Approval";
+      const allowedStatuses = buildAllowedStatuses();
 
       let transfersQuery = supabase
         .from('daily_deal_flow')
         .select('*')
-        .eq('status', pendingApprovalStatus)
+        .in('status', allowedStatuses)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -299,7 +373,7 @@ const SubmissionPortalPage = () => {
         .from('submission_portal')
         .select('*');
 
-      submissionQuery = submissionQuery.eq('status', pendingApprovalStatus);
+      submissionQuery = submissionQuery.in('status', allowedStatuses);
 
       // Apply date filter if set
       if (dateFilter) {
@@ -443,33 +517,7 @@ const SubmissionPortalPage = () => {
   // Update filtered data whenever data or filters change
   useEffect(() => {
     setFilteredData(applyFilters(data));
-    setCurrentPage(1); // Reset to first page when filters change
   }, [data, dateFilter, statusFilter, showDuplicates, searchTerm, dataCompletenessFilter]);
-
-  // Pagination calculations
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentPageData = useMemo(
-    () => filteredData.slice(startIndex, endIndex),
-    [filteredData, startIndex, endIndex]
-  );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
 
   useEffect(() => {
     fetchData();
@@ -478,6 +526,71 @@ const SubmissionPortalPage = () => {
   const handleRefresh = () => {
     fetchData(true);
   };
+
+  const handleDropToStage = async (rowId: string, stageKey: StageKey) => {
+    const nextStatus = getStatusForStage(stageKey);
+
+    const prev = data;
+    const next = prev.map((r) => (r.id === rowId ? { ...r, status: nextStatus } : r));
+    setData(next);
+
+    try {
+      const { error: transferError } = await supabase
+        .from('daily_deal_flow')
+        .update({ status: nextStatus })
+        .eq('id', rowId);
+
+      if (transferError) throw transferError;
+
+      const { error: submissionError } = await (supabase as any)
+        .from('submission_portal')
+        .update({ status: nextStatus })
+        .eq('id', rowId);
+
+      if (submissionError) {
+        console.warn('Failed updating submission_portal status:', submissionError);
+      }
+
+      toast({
+        title: 'Status Updated',
+        description: `Lead status updated to "${nextStatus}"`,
+      });
+    } catch (e) {
+      console.error('Error updating status:', e);
+      setData(prev);
+      toast({
+        title: 'Error',
+        description: 'Failed to update lead status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const leadsByStage = useMemo(() => {
+    const grouped = new Map<StageKey, SubmissionPortalRow[]>();
+    kanbanStages.forEach((stage) => grouped.set(stage.key, []));
+    filteredData.forEach((row) => {
+      const stageKey = deriveStageKey(row);
+      grouped.get(stageKey)?.push(row);
+    });
+    return grouped;
+  }, [filteredData]);
+
+  useEffect(() => {
+    setColumnPage((prev) => {
+      const next: Record<string, number> = { ...prev };
+      kanbanStages.forEach((stage) => {
+        const rows = leadsByStage.get(stage.key) || [];
+        const pageSize = 25;
+        const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+        const current = Number(next[stage.key] ?? 1);
+        next[stage.key] = Math.min(Math.max(1, current), totalPages);
+      });
+      return next;
+    });
+  }, [leadsByStage]);
+
+  const getStageDisplayLabel = (label: string) => label.replace(/^Stage\s+\d+\s*:\s*/i, "");
 
   if (loading) {
     return (
@@ -516,10 +629,11 @@ const SubmissionPortalPage = () => {
                   <SelectGroup>
                     <SelectItem value="__ALL__">All Statuses</SelectItem>
                     <SelectItem value="Pending Approval">Pending Approval</SelectItem>
-                    <SelectItem value="Underwriting">Underwriting</SelectItem>
-                    <SelectItem value="Submitted">Submitted</SelectItem>
-                    <SelectItem value="DQ'd Can't be sold">DQ'd Can't be sold</SelectItem>
-                    <SelectItem value="Returned To Center - DQ">Returned To Center - DQ</SelectItem>
+                    {kanbanStages.map((s) => (
+                      <SelectItem key={s.key} value={s.label}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -563,65 +677,144 @@ const SubmissionPortalPage = () => {
             </div>
           </div>
 
-          <Card className="flex min-h-[650px] flex-1 flex-col">
-            <CardContent className="p-0 min-h-0 flex-1 flex flex-col">
-              <div className="min-h-0 flex-1 overflow-auto">
-                <table className="w-full table-fixed text-sm">
-                  <thead className="bg-muted/40">
-                    <tr className="text-left text-xs uppercase text-muted-foreground">
-                      <th className="px-4 py-3 w-[140px]">Date</th>
-                      <th className="px-4 py-3">Customer Name</th>
-                      <th className="px-4 py-3 w-[180px]">Phone Number</th>
-                      <th className="px-4 py-3 w-[200px]">Lead Vendor</th>
-                      <th className="px-4 py-3 w-[180px]">Status</th>
-                      <th className="px-4 py-3 w-[200px]">Assigned</th>
-                      <th className="px-4 py-3 w-[120px] text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentPageData.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
-                          No records found.
-                        </td>
-                      </tr>
-                    ) : (
-                      currentPageData.map((row) => (
-                        <tr key={row.id} className="border-b last:border-0 hover:bg-muted/30">
-                          <td className="px-4 py-3">{row.date ?? '—'}</td>
-                          <td className="px-4 py-3 font-medium">{row.insured_name ?? '—'}</td>
-                          <td className="px-4 py-3">{row.client_phone_number ?? '—'}</td>
-                          <td className="px-4 py-3">{row.lead_vendor ?? '—'}</td>
-                          <td className="px-4 py-3">
-                            <Badge variant="outline">{row.status ?? '—'}</Badge>
-                          </td>
-                          <td className="px-4 py-3">{row.licensed_agent_account || row.agent || row.buffer_agent || '—'}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex justify-center">
-                              <Button variant="outline" size="sm" onClick={() => handleView(row)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+          <div className="flex min-h-[650px] flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-auto p-4">
+              <div className="flex min-h-0 min-w-[2200px] gap-3 pr-2">
+                {kanbanStages.map((stage) => {
+                  const rows = leadsByStage.get(stage.key) || [];
+                  const pageSize = 25;
+                  const current = Number(columnPage[stage.key] ?? 1);
+                  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+                  const startIndex = (current - 1) * pageSize;
+                  const endIndex = startIndex + pageSize;
+                  const pageRows = rows.slice(startIndex, endIndex);
 
-              <div className="flex items-center justify-between border-t px-4 py-3">
-                <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={currentPage <= 1}>
-                  Previous
-                </Button>
-                <div className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</div>
-                <Button variant="outline" size="sm" onClick={handleNextPage} disabled={currentPage >= totalPages}>
-                  Next
-                </Button>
+                  return (
+                    <Card
+                      key={stage.key}
+                      className={
+                        "flex min-h-[560px] w-[26rem] flex-col bg-muted/20" +
+                        (dragOverStage === stage.key ? " ring-2 ring-primary/30" : "")
+                      }
+                      onDragOver={(e) => e.preventDefault()}
+                      onDragEnter={() => setDragOverStage(stage.key)}
+                      onDragLeave={() => setDragOverStage((prev) => (prev === stage.key ? null : prev))}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const droppedId = e.dataTransfer.getData('text/plain');
+                        if (!droppedId) return;
+                        handleDropToStage(droppedId, stage.key);
+                        setDraggingId(null);
+                        setDragOverStage(null);
+                      }}
+                    >
+                      <CardHeader className="flex flex-row items-center justify-between border-b px-3 py-2">
+                        <CardTitle className="text-sm font-semibold">{getStageDisplayLabel(stage.label)}</CardTitle>
+                        <Badge variant="secondary">{rows.length}</Badge>
+                      </CardHeader>
+                      <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+                        {pageRows.length === 0 ? (
+                          <div className="rounded-md border border-dashed border-muted-foreground/30 px-3 py-6 text-center text-xs text-muted-foreground">
+                            No leads
+                          </div>
+                        ) : (
+                          pageRows.map((row) => {
+                            const closer = row.licensed_agent_account || row.agent || row.buffer_agent || "-";
+                            const attorney = row.assigned_attorney_id ? (attorneyById[row.assigned_attorney_id] || "-") : "-";
+
+                            return (
+                              <Card
+                                key={row.id}
+                                draggable
+                                onDragStart={(e) => {
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  e.dataTransfer.setData('text/plain', row.id);
+                                  setDraggingId(row.id);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggingId(null);
+                                  setDragOverStage(null);
+                                }}
+                                className={
+                                  "w-full transition cursor-pointer " +
+                                  (draggingId === row.id ? "opacity-70" : "")
+                                }
+                              >
+                                <CardContent className="p-2">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <div className="truncate text-sm font-semibold">{row.insured_name || '—'}</div>
+                                      <div className="mt-0.5 text-xs text-muted-foreground">
+                                        {(row.submission_id || row.id)?.toUpperCase()} · {row.client_phone_number || '—'}
+                                      </div>
+                                    </div>
+                                    <div className="shrink-0">
+                                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleView(row)}>
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-2 flex items-center justify-between gap-2">
+                                    <Badge variant="secondary" className="text-xs">{row.lead_vendor || '—'}</Badge>
+                                    <div className="text-xs text-muted-foreground">{row.date || ''}</div>
+                                  </div>
+
+                                  <div className="mt-2">
+                                    <Badge variant="outline" className="text-xs">{row.status ?? '—'}</Badge>
+                                  </div>
+
+                                  <div className="mt-2 grid grid-cols-1 gap-1 text-xs text-muted-foreground">
+                                    <div>
+                                      <span className="font-medium">Closer:</span> {closer}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">Attorney:</span> {attorney}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })
+                        )}
+                      </CardContent>
+                      <div className="flex items-center justify-between border-t px-3 py-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setColumnPage((prev) => ({
+                              ...prev,
+                              [stage.key]: Math.max(1, (Number(prev[stage.key] ?? 1) - 1)),
+                            }))
+                          }
+                          disabled={current <= 1}
+                        >
+                          Previous
+                        </Button>
+                        <div className="text-xs text-muted-foreground">
+                          Page {current} of {totalPages}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setColumnPage((prev) => ({
+                              ...prev,
+                              [stage.key]: Math.min(totalPages, (Number(prev[stage.key] ?? 1) + 1)),
+                            }))
+                          }
+                          disabled={current >= totalPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>
