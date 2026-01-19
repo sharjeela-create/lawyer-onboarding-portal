@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -69,6 +69,8 @@ export const GridToolbar = ({
   const ALL_OPTION = "__ALL__";
   const { leadVendors } = useCenters();
   const [closerOptions, setCloserOptions] = useState<string[]>(["All Closers"]);
+  const [statusFilterOpen, setStatusFilterOpen] = useState(false);
+  const [statusFilterQuery, setStatusFilterQuery] = useState("");
 
   useEffect(() => {
     const fetchClosers = async () => {
@@ -83,6 +85,14 @@ export const GridToolbar = ({
 
     fetchClosers();
   }, []);
+
+  useEffect(() => {
+    if (!statusFilter || statusFilter === ALL_OPTION) {
+      setStatusFilterQuery("");
+      return;
+    }
+    setStatusFilterQuery(statusFilter);
+  }, [statusFilter]);
 
 
   const statusOptions = [
@@ -101,6 +111,13 @@ export const GridToolbar = ({
     "Call Never Sent",
     "Disconnected"
   ];
+
+  const statusFilterMatches = useMemo(() => {
+    const normalized = statusOptions.map((s) => (s === "All Statuses" ? ALL_OPTION : s));
+    const query = statusFilterQuery.trim().toLowerCase();
+    if (!query) return normalized;
+    return normalized.filter((opt) => opt !== ALL_OPTION && opt.toLowerCase().includes(query));
+  }, [statusFilterQuery, statusOptions]);
 
   const callResultOptions = [
     "All Call Results",
@@ -389,18 +406,50 @@ export const GridToolbar = ({
             Status
             {statusFilter && statusFilter !== ALL_OPTION && <span className="text-blue-600 ml-1">●</span>}
           </Label>
-          <Select value={statusFilter || ALL_OPTION} onValueChange={onStatusFilterChange}>
-            <SelectTrigger className={cn("mt-1", statusFilter && statusFilter !== ALL_OPTION && "ring-2 ring-blue-200")}>
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              {statusOptions.map((status) => (
-                <SelectItem key={status} value={status === "All Statuses" ? ALL_OPTION : status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="relative">
+            <Input
+              className={cn("mt-1", statusFilter && statusFilter !== ALL_OPTION && "ring-2 ring-blue-200")}
+              value={statusFilterQuery}
+              placeholder="All Statuses"
+              onFocus={() => setStatusFilterOpen(true)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setStatusFilterQuery(next);
+                setStatusFilterOpen(true);
+                if (!next.trim()) {
+                  onStatusFilterChange(ALL_OPTION);
+                }
+              }}
+              onBlur={() => {
+                window.setTimeout(() => setStatusFilterOpen(false), 150);
+              }}
+            />
+
+            {statusFilterOpen && (
+              <div className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                {statusFilterMatches.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">No matching found.</div>
+                ) : (
+                  statusFilterMatches.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        const val = opt === ALL_OPTION ? ALL_OPTION : opt;
+                        onStatusFilterChange(val);
+                        setStatusFilterQuery(opt === ALL_OPTION ? "" : opt);
+                        setStatusFilterOpen(false);
+                      }}
+                    >
+                      {opt === ALL_OPTION ? "All Statuses" : opt}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Call Result Filter */}

@@ -25,6 +25,7 @@ import DailyDealFlowLeadDetailsPage from "./pages/DailyDealFlow/DailyDealFlowLea
 import LeadDetailsPage from "./pages/LeadDetails/LeadDetailsPage";
 import TransferPortalPage from "./pages/TransferPortalPage";
 import SubmissionPortalPage from "./pages/SubmissionPortalPage";
+import RetainersKanbanPage from "./pages/RetainersKanbanPage";
 import BulkLookupPage from "./pages/BulkLookupPage";
 import DealFlowLookup from "./pages/DealFlowLookup";
 import AgentLicensing from "./pages/AgentLicensing";
@@ -70,6 +71,17 @@ const App = () => (
                 <ProtectedRoute>
                   <AppShell title="Leads">
                     <Leads />
+                  </AppShell>
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/retainers" 
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Retainers">
+                    <RetainersKanbanPage />
                   </AppShell>
                 </ProtectedRoute>
               } 

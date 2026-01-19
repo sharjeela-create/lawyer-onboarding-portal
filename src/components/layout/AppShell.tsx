@@ -13,6 +13,8 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 
+import { TbUserShield } from "react-icons/tb";
+
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -162,6 +164,13 @@ const AppShell = ({
         label: 'Leads',
         to: '/leads',
         icon: <Users className="h-4 w-4 text-current" />,
+        end: true,
+        show: !isCenterUser && !restricted,
+      },
+      {
+        label: 'Retainers',
+        to: '/retainers',
+        icon: <TbUserShield className="h-4 w-4 text-current" />,
         end: true,
         show: !isCenterUser && !restricted,
       },

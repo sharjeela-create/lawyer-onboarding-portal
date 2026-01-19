@@ -79,7 +79,7 @@ export const DataGrid = ({
   const groupByOptions = [
     { value: 'none', label: 'No Grouping' },
     { value: 'lead_vendor', label: 'Lead Vendor' },
-    { value: 'agent', label: 'Agent' },
+    { value: 'agent', label: 'Closer' },
     { value: 'licensed_agent_account', label: 'Licensed Agent' },
     { value: 'status', label: 'Status' },
     { value: 'call_result', label: 'Call Result' },
@@ -90,7 +90,7 @@ export const DataGrid = ({
   ];
 
   const columns = [
-    "S.No", "Date", "Lead Vendor", "Customer Name", "Phone Number", "Agent", "Assigned Attorney", "Status",
+    "S.No", "Date", "Lead Vendor", "Customer Name", "Phone Number", "Closer", "Assigned Attorney", "Status",
     "Call Result", "Notes"
   ];
   
@@ -372,7 +372,7 @@ export const DataGrid = ({
                   case 'Lead Vendor': return 'lead_vendor';
                   case 'Customer Name': return 'insured_name';
                   case 'Phone Number': return 'client_phone_number';
-                  case 'Agent': return 'agent';
+                  case 'Closer': return 'agent';
                   case 'Assigned Attorney': return 'assigned_attorney_id';
                   case 'Status': return 'status';
                   case 'Call Result': return 'call_result';
@@ -396,7 +396,7 @@ export const DataGrid = ({
                   column === 'Lead Vendor' ? 'w-20' :
                   column === 'Customer Name' ? 'w-32' :
                   column === 'Phone Number' ? 'w-28' :
-                  column === 'Agent' ? 'w-20' :
+                  column === 'Closer' ? 'w-20' :
                   column === 'Assigned Attorney' ? 'w-28' :
                   column === 'Status' ? 'w-32' :
                   column === 'Call Result' ? 'w-24' :

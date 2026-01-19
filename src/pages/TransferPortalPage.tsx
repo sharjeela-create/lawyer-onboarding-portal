@@ -65,6 +65,17 @@ const kanbanStages = [
 
 type StageKey = (typeof kanbanStages)[number]["key"];
 
+const stageTheme: Record<StageKey, { column: string }> = {
+  transfer_api: { column: "border-sky-200 bg-sky-50/40" },
+  incomplete_transfer: { column: "border-amber-200 bg-amber-50/40" },
+  returned_to_center_dq: { column: "border-orange-200 bg-orange-50/40" },
+  previously_sold_bpo: { column: "border-slate-200 bg-slate-50/40" },
+  needs_bpo_callback: { column: "border-yellow-200 bg-yellow-50/40" },
+  application_withdrawn: { column: "border-fuchsia-200 bg-fuchsia-50/40" },
+  pending_information: { column: "border-indigo-200 bg-indigo-50/40" },
+  pending_approval: { column: "border-emerald-200 bg-emerald-50/40" },
+};
+
 const stageSlugMap: Record<string, StageKey> = {
   transfer_api: "transfer_api",
   transferapi: "transfer_api",
@@ -127,11 +138,15 @@ const TransferPortalPage = () => {
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [selectedStage, setSelectedStage] = useState<"all" | StageKey>("all");
 
+  const kanbanPageSize = 25;
+  const [columnPage, setColumnPage] = useState<Record<string, number>>({});
+
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editRow, setEditRow] = useState<TransferPortalRow | null>(null);
   const [editStage, setEditStage] = useState<string>("");
   const [editNotes, setEditNotes] = useState<string>("");
+  const [editStageOpen, setEditStageOpen] = useState(false);
 
   // Remove duplicates based on insured_name, client_phone_number, and lead_vendor
   const removeDuplicates = (records: TransferPortalRow[]): TransferPortalRow[] => {
@@ -286,8 +301,15 @@ const TransferPortalPage = () => {
     setEditRow(row);
     setEditStage((row.status || '').trim() || kanbanStages[0].label);
     setEditNotes(row.notes || '');
+    setEditStageOpen(false);
     setEditOpen(true);
   };
+
+  const editStageMatches = useMemo(() => {
+    const query = (editStage || '').trim().toLowerCase();
+    if (!query) return allStageOptions;
+    return allStageOptions.filter((label) => label.toLowerCase().includes(query));
+  }, [editStage]);
 
   const handleSaveEdit = async () => {
     if (!editRow) return;
@@ -345,6 +367,19 @@ const TransferPortalPage = () => {
     });
     return grouped;
   }, [stageFilteredData]);
+
+  useEffect(() => {
+    setColumnPage((prev) => {
+      const next: Record<string, number> = { ...prev };
+      kanbanStages.forEach((stage) => {
+        const rows = leadsByStage.get(stage.key) || [];
+        const totalPages = Math.max(1, Math.ceil(rows.length / kanbanPageSize));
+        const current = Number(next[stage.key] ?? 1);
+        next[stage.key] = Math.min(Math.max(1, current), totalPages);
+      });
+      return next;
+    });
+  }, [leadsByStage]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -606,8 +641,16 @@ const TransferPortalPage = () => {
               <div className="flex min-h-0 min-w-[2200px] gap-3 pr-2">
                 {kanbanStages.map((stage) => {
                   const rows = leadsByStage.get(stage.key) || [];
+                  const current = Number(columnPage[stage.key] ?? 1);
+                  const totalPages = Math.max(1, Math.ceil(rows.length / kanbanPageSize));
+                  const startIndex = (current - 1) * kanbanPageSize;
+                  const endIndex = startIndex + kanbanPageSize;
+                  const pageRows = rows.slice(startIndex, endIndex);
                   return (
-                    <Card key={stage.key} className="flex min-h-[560px] w-[26rem] flex-col bg-muted/20">
+                    <Card
+                      key={stage.key}
+                      className={`flex min-h-[560px] w-[26rem] flex-col bg-muted/20 ${stageTheme[stage.key].column}`}
+                    >
                       <CardHeader className="flex flex-row items-center justify-between border-b px-3 py-2">
                         <CardTitle className="text-sm font-semibold">
                           {stage.label}
@@ -615,12 +658,12 @@ const TransferPortalPage = () => {
                         <Badge variant="secondary">{rows.length}</Badge>
                       </CardHeader>
                       <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
-                        {rows.length === 0 ? (
+                        {pageRows.length === 0 ? (
                           <div className="rounded-md border border-dashed border-muted-foreground/30 px-3 py-6 text-center text-xs text-muted-foreground">
                             No leads
                           </div>
                         ) : (
-                          rows.map((row) => (
+                          pageRows.map((row) => (
                             <Card key={row.id} className="relative w-full" >
                               <CardContent className="p-2">
                                 <Button
@@ -649,6 +692,42 @@ const TransferPortalPage = () => {
                           ))
                         )}
                       </CardContent>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-t px-3 py-2 text-xs">
+                        <span className="text-muted-foreground">
+                          Page {current} of {totalPages}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setColumnPage((prev) => ({
+                                ...prev,
+                                [stage.key]: Math.max(1, current - 1),
+                              }))
+                            }
+                            disabled={current === 1}
+                          >
+                            Previous
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setColumnPage((prev) => ({
+                                ...prev,
+                                [stage.key]: Math.min(totalPages, current + 1),
+                              }))
+                            }
+                            disabled={current === totalPages}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
                     </Card>
                   );
                 })}
@@ -752,20 +831,43 @@ const TransferPortalPage = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Stage</Label>
-                  <Select value={editStage} onValueChange={(v) => setEditStage(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select stage" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {allStageOptions.map((label) => (
-                          <SelectItem key={label} value={label}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <Input
+                      value={editStage}
+                      placeholder="Type stage..."
+                      onFocus={() => setEditStageOpen(true)}
+                      onChange={(e) => {
+                        setEditStage(e.target.value);
+                        setEditStageOpen(true);
+                      }}
+                      onBlur={() => {
+                        window.setTimeout(() => setEditStageOpen(false), 150);
+                      }}
+                    />
+
+                    {editStageOpen && (
+                      <div className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                        {editStageMatches.length === 0 ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">No matching found.</div>
+                        ) : (
+                          editStageMatches.map((label) => (
+                            <button
+                              key={label}
+                              type="button"
+                              className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setEditStage(label);
+                                setEditStageOpen(false);
+                              }}
+                            >
+                              {label}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">

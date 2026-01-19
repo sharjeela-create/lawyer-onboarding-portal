@@ -18,16 +18,14 @@ import { useToast } from "@/hooks/use-toast";
 import { getCurrentTimestampEST } from "@/lib/dateUtils";
 import { useCenters } from "@/hooks/useCenters";
 import type { AttorneyProfile } from "@/hooks/useAttorneys";
+import { fetchLicensedCloserOptions } from "@/lib/agentOptions";
 
-// Helper function to create Date object from YYYY-MM-DD string without timezone conversion
 const createDateFromString = (dateString: string): Date => {
   const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day); // month is 0-indexed in Date constructor
+  return new Date(year, month - 1, day);
 };
 
-// Utility function to format dates without timezone conversion
 const formatDateWithoutTimezone = (dateString: string): string => {
-  // Parse YYYY-MM-DD format directly without creating Date object
   const [year, month, day] = dateString.split('-');
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -47,10 +45,6 @@ interface EditableRowProps {
   attorneyById?: Record<string, { full_name: string | null; primary_email: string | null }>;
   attorneys?: AttorneyProfile[];
 }
-
-const agentOptions = [
-  "Claudia", "Lydia", "Zack","Tatumn","Angy", "Benjamin", "Erica", "N/A", "Isaac"
-];
 
 const licensedAccountOptions = [
   "Claudia", "Lydia", "Isaac", "Noah","Trinity", "Benjamin", "Erica", "N/A","Tatumn"
@@ -102,9 +96,31 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
   const [isSaving, setIsSaving] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [agentOptions, setAgentOptions] = useState<string[]>([]);
   const prevRowId = useRef(row.id);
   const { toast } = useToast();
   const { leadVendors } = useCenters();
+
+  const statusMatches = useMemo(() => {
+    const query = (editData.status ?? "").toString().trim().toLowerCase();
+    if (!query) return statusOptions;
+    return statusOptions.filter((option) => option.toLowerCase().includes(query));
+  }, [editData.status]);
+
+  useEffect(() => {
+    const fetchClosers = async () => {
+      try {
+        const options = await fetchLicensedCloserOptions();
+        setAgentOptions(options.map((o) => o.label));
+      } catch (e) {
+        console.error('Error fetching closers:', e);
+        setAgentOptions([]);
+      }
+    };
+
+    fetchClosers();
+  }, []);
 
   // Reset edit state when dialog closes
   useEffect(() => {
@@ -585,19 +601,44 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
             <div>
               <Label className="text-sm font-medium">Status</Label>
               {isEditing ? (
-                <Select
-                  value={editData.status || ''}
-                  onValueChange={(value) => updateField('status', value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map(option => (
-                      <SelectItem key={option} value={option}>{option}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Input
+                    className="mt-1"
+                    value={editData.status || ""}
+                    placeholder="Type status..."
+                    onFocus={() => setStatusOpen(true)}
+                    onChange={(e) => {
+                      updateField('status', e.target.value);
+                      setStatusOpen(true);
+                    }}
+                    onBlur={() => {
+                      window.setTimeout(() => setStatusOpen(false), 150);
+                    }}
+                  />
+
+                  {statusOpen && (
+                    <div className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                      {statusMatches.length === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No matching found.</div>
+                      ) : (
+                        statusMatches.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              updateField('status', option);
+                              setStatusOpen(false);
+                            }}
+                          >
+                            {option}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="mt-1 p-2 bg-muted rounded">{row.status || 'N/A'}</div>
               )}
@@ -918,19 +959,44 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
 
           {/* Status */}
           <td className="border border-border px-3 py-2">
-            <Select
-              value={editData.status || ''}
-              onValueChange={(value) => updateField('status', value)}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map(option => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <Input
+                value={editData.status || ''}
+                onChange={(e) => {
+                  updateField('status', e.target.value);
+                  setStatusOpen(true);
+                }}
+                onFocus={() => setStatusOpen(true)}
+                onBlur={() => {
+                  window.setTimeout(() => setStatusOpen(false), 150);
+                }}
+                className="h-8 text-xs"
+                placeholder="Status"
+              />
+
+              {statusOpen && (
+                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                  {statusMatches.length === 0 ? (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No matching found.</div>
+                  ) : (
+                    statusMatches.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        className="w-full rounded-sm px-2 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          updateField('status', option);
+                          setStatusOpen(false);
+                        }}
+                      >
+                        {option}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </td>
 
           {/* Call Result */}
