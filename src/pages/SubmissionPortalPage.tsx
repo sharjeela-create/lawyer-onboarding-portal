@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, RefreshCw, Pencil } from "lucide-react";
+import { Loader2, RefreshCw, Pencil, StickyNote } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAttorneys } from "@/hooks/useAttorneys";
 
@@ -178,6 +178,7 @@ const SubmissionPortalPage = () => {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
   const [columnPage, setColumnPage] = useState<Record<string, number>>({});
+  const [noteCounts, setNoteCounts] = useState<Record<string, number>>({});
 
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -434,7 +435,7 @@ const SubmissionPortalPage = () => {
       // Note: We don't apply status filter here to ensure all submission data is available
       // for merging with transfer data, regardless of current filter selection
 
-      const { data: submissionData, error: submissionError } = await submissionQuery;
+      const { data: submissionDataRaw, error: submissionError } = await submissionQuery;
 
       if (submissionError) {
         console.warn("Error fetching submission portal data:", submissionError);
@@ -443,6 +444,9 @@ const SubmissionPortalPage = () => {
 
       // Create a map of submission data by submission_id for quick lookup
       const submissionMap = new Map();
+      const submissionData = submissionDataRaw ?? [];
+      setData(submissionData);
+
       if (submissionData) {
         submissionData.forEach((sub: any) => {
           submissionMap.set(sub.submission_id, sub);
@@ -546,6 +550,9 @@ const SubmissionPortalPage = () => {
 
       setData(dataWithLogs);
 
+      // Recompute note counts using the fully merged dataset so transfer-only rows are included
+      fetchNoteCounts(dataWithLogs);
+
       if (showRefreshToast) {
         toast({
           title: "Success",
@@ -576,6 +583,98 @@ const SubmissionPortalPage = () => {
 
   const handleRefresh = () => {
     fetchData(true);
+  };
+
+  const fetchNoteCounts = async (rows: SubmissionPortalRow[] | null | undefined) => {
+    const safeRows = Array.isArray(rows) ? rows : [];
+    const leadIds = safeRows.map((r) => r.id).filter(Boolean);
+    if (leadIds.length === 0) {
+      setNoteCounts({});
+      return;
+    }
+
+    const submissionMap = new Map<string, string>();
+    safeRows.forEach((r) => {
+      if (r.submission_id) submissionMap.set(r.submission_id, r.id);
+    });
+
+    const counts: Record<string, number> = {};
+    leadIds.forEach((id) => {
+      counts[id] = 0;
+    });
+
+    // lead_notes by lead_id
+    try {
+      const { data: leadNoteRows, error: leadNoteErr } = await (supabase as any)
+        .from('lead_notes')
+        .select('lead_id')
+        .in('lead_id', leadIds);
+
+      if (!leadNoteErr && Array.isArray(leadNoteRows)) {
+        leadNoteRows.forEach((row: { lead_id: string }) => {
+          if (row.lead_id) {
+            counts[row.lead_id] = (counts[row.lead_id] || 0) + 1;
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to fetch lead note counts', e);
+    }
+
+    // lead_notes by submission_id
+    const submissionIds = Array.from(submissionMap.keys());
+    if (submissionIds.length > 0) {
+      try {
+        const { data: subNoteRows, error: subNoteErr } = await (supabase as any)
+          .from('lead_notes')
+          .select('submission_id')
+          .in('submission_id', submissionIds);
+
+        if (!subNoteErr && Array.isArray(subNoteRows)) {
+          subNoteRows.forEach((row: { submission_id: string }) => {
+            const leadId = submissionMap.get(row.submission_id);
+            if (leadId) {
+              counts[leadId] = (counts[leadId] || 0) + 1;
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to fetch submission note counts', e);
+      }
+    }
+
+    // Legacy daily_deal_flow notes
+    safeRows.forEach((r) => {
+      if ((r.notes || '').trim()) {
+        counts[r.id] = (counts[r.id] || 0) + 1;
+      }
+    });
+
+    // Legacy leads.additional_notes via submission_id
+    if (submissionIds.length > 0) {
+      try {
+        const { data: leadRows, error: leadsErr } = await supabase
+          .from('leads')
+          .select('submission_id, additional_notes')
+          .in('submission_id', submissionIds);
+
+        if (!leadsErr && Array.isArray(leadRows)) {
+          leadRows.forEach((row) => {
+            const noteText = (row.additional_notes as string | null)?.trim();
+            if (noteText) {
+              const leadId = submissionMap.get(row.submission_id as string);
+              if (leadId) {
+                counts[leadId] = (counts[leadId] || 0) + 1;
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to fetch legacy leads notes', e);
+      }
+    }
+
+    setNoteCounts(counts);
   };
 
   const handleDropToStage = async (rowId: string, stageKey: StageKey) => {
@@ -664,7 +763,9 @@ const SubmissionPortalPage = () => {
 
   const handleView = (row: SubmissionPortalRow) => {
     if (!row?.id) return;
-    navigate(`/daily-deal-flow/lead/${encodeURIComponent(row.id)}`);
+    navigate(`/daily-deal-flow/lead/${encodeURIComponent(row.id)}`, {
+      state: { activeNav: '/submission-portal' },
+    });
   };
 
   const handleOpenEdit = (row: SubmissionPortalRow) => {
@@ -680,6 +781,9 @@ const SubmissionPortalPage = () => {
     const nextStage = (editStage || '').trim();
     if (!nextStage) return;
 
+    const previousStage = (editRow.status || '').trim();
+    const stageChanged = previousStage !== nextStage;
+
     try {
       setEditSaving(true);
 
@@ -690,8 +794,8 @@ const SubmissionPortalPage = () => {
 
       if (flowError) throw flowError;
 
-      const notesText = (editNotes || '').trim();
-      if (notesText) {
+      const notesText = (editNotes || '').trim() || 'No notes provided.';
+      if (stageChanged) {
         try {
           const { error: slackError } = await supabase.functions.invoke('disposition-change-slack-alert', {
             body: {
@@ -878,7 +982,13 @@ const SubmissionPortalPage = () => {
                                     <div className="min-w-0">
                                       <div className="truncate text-sm font-semibold">{row.insured_name || '—'}</div>
                                       <div className="mt-0.5 text-xs text-muted-foreground">
-                                        {row.client_phone_number || '—'}
+                                        <div className="flex items-center gap-2">
+                                          <span>{row.client_phone_number || '—'}</span>
+                                          <div className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px]">
+                                            <StickyNote className="h-3.5 w-3.5" />
+                                            <span>{noteCounts[row.id] ?? 0}</span>
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                     <div className="shrink-0">

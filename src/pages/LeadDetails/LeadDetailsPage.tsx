@@ -13,6 +13,23 @@ import { useToast } from "@/hooks/use-toast";
 
 type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
 
+type LeadNote = {
+  id: string;
+  lead_id: string | null;
+  submission_id?: string | null;
+  note: string;
+  created_at: string;
+  created_by?: string | null;
+  author_name?: string | null;
+  source?: string | null;
+};
+
+type LegacyNote = {
+  source: string;
+  note: string;
+  timestamp?: string | null;
+};
+
 const displayValue = (value: unknown) => {
   if (value === null || value === undefined) return "—";
   if (typeof value === "string" && value.trim().length === 0) return "—";
@@ -58,6 +75,9 @@ const LeadDetailsPage = () => {
 
   const [lead, setLead] = useState<LeadRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notes, setNotes] = useState<LeadNote[]>([]);
+  const [legacyNotes, setLegacyNotes] = useState<LegacyNote[]>([]);
 
   useEffect(() => {
     const run = async () => {
@@ -102,10 +122,54 @@ const LeadDetailsPage = () => {
 
       setLead(data);
       setLoading(false);
+
+      fetchNotes(data.submission_id ?? null, data.id ?? null);
+      setLegacyNotes(
+        data.additional_notes
+          ? [
+              {
+                source: "Leads",
+                note: String(data.additional_notes).trim(),
+                timestamp: data.updated_at || data.created_at || null,
+              },
+            ]
+          : []
+      );
     };
 
     run();
   }, [submissionId, toast]);
+
+  const fetchNotes = async (submission_id: string | null, lead_id: string | null) => {
+    setNotesLoading(true);
+    try {
+      const query = (supabase as any)
+        .from("lead_notes")
+        .select("id, lead_id, submission_id, note, created_at, created_by, author_name, source")
+        .order("created_at", { ascending: false });
+
+      if (submission_id) {
+        query.eq("submission_id", submission_id);
+      } else if (lead_id) {
+        query.eq("lead_id", lead_id);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Failed to fetch lead notes", error);
+        setNotes([]);
+        return;
+      }
+
+      setNotes((data as LeadNote[]) || []);
+    } catch (e) {
+      console.error("Unexpected error fetching lead notes", e);
+      setNotes([]);
+    } finally {
+      setNotesLoading(false);
+    }
+  };
 
   const headerTitle = useMemo(() => {
     if (!lead) return "Lead Details";
@@ -245,8 +309,67 @@ const LeadDetailsPage = () => {
 
           <TabsContent value="notes">
             <Card>
-              <CardContent className="text-sm whitespace-pre-wrap pt-6">
-                {lead.additional_notes ? String(lead.additional_notes) : "—"}
+              <CardContent className="pt-6">
+                {notesLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading notes...
+                  </div>
+                ) : notes.length === 0 && legacyNotes.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">No notes found for this lead.</div>
+                ) : (
+                  <div className="space-y-6">
+                    {notes.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium text-foreground">Notes</div>
+                        {notes.map((n) => {
+                          const author = (n.author_name || "").trim() || n.created_by || "Unknown";
+                          const source = (n.source || "").trim() || "Unknown source";
+                          const dateText = n.created_at ? format(new Date(n.created_at), "PPpp") : "";
+                          return (
+                            <div key={n.id} className="rounded-md border p-3">
+                              <div className="text-sm text-muted-foreground mb-1">
+                                <span className="font-medium text-foreground">{author}</span>
+                                <span className="mx-1">•</span>
+                                <span>{source}</span>
+                                {dateText && (
+                                  <>
+                                    <span className="mx-1">•</span>
+                                    <span>{dateText}</span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="whitespace-pre-wrap text-sm text-foreground">{n.note}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {legacyNotes.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium text-foreground">Legacy notes</div>
+                        {legacyNotes.map((ln, idx) => {
+                          const dateText = ln.timestamp ? format(new Date(ln.timestamp), "PPpp") : "";
+                          return (
+                            <div key={`legacy-${idx}`} className="rounded-md border p-3">
+                              <div className="text-sm text-muted-foreground mb-1">
+                                <span className="font-medium text-foreground">{ln.source}</span>
+                                {dateText && (
+                                  <>
+                                    <span className="mx-1">•</span>
+                                    <span>{dateText}</span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="whitespace-pre-wrap text-sm text-foreground">{ln.note}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

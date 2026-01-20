@@ -103,6 +103,7 @@ export const GridToolbar = ({
     "Incomplete Transfer",
     "DQ'd Can't be sold",
     "Returned To Center - DQ",
+    "Return DID Successfully",
     "Future Submission Date",
     "Application Withdrawn",
     "Updated Banking/draft date",

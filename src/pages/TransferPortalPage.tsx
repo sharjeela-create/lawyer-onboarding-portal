@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeftRight, Loader2, Pencil, RefreshCw, Users } from "lucide-react";
+import { ArrowLeftRight, Loader2, Pencil, RefreshCw, Users, StickyNote } from "lucide-react";
 
 export interface TransferPortalRow {
   id: string;
@@ -124,6 +125,7 @@ const deriveStageKey = (row: TransferPortalRow): StageKey => {
 };
 
 const TransferPortalPage = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState<TransferPortalRow[]>([]);
   const [filteredData, setFilteredData] = useState<TransferPortalRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,6 +142,7 @@ const TransferPortalPage = () => {
 
   const kanbanPageSize = 25;
   const [columnPage, setColumnPage] = useState<Record<string, number>>({});
+  const [noteCounts, setNoteCounts] = useState<Record<string, number>>({});
 
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -247,9 +250,14 @@ const TransferPortalPage = () => {
 
       setData(transferRows);
 
-      if (sourceTypeFilter !== "__ALL__") {
-        setData(transferRows.filter((row) => row.source_type === sourceTypeFilter));
-      }
+      const rowsForCounts = sourceTypeFilter === "__ALL__"
+        ? transferRows
+        : transferRows.filter((row) => row.source_type === sourceTypeFilter);
+
+      setData(rowsForCounts);
+
+      // Fetch aggregated note counts (lead_notes + legacy notes fields)
+      fetchNoteCounts(rowsForCounts);
 
       if (showRefreshToast) {
         toast({
@@ -305,6 +313,13 @@ const TransferPortalPage = () => {
     setEditOpen(true);
   };
 
+  const handleView = (row: TransferPortalRow) => {
+    if (!row?.id) return;
+    navigate(`/daily-deal-flow/lead/${encodeURIComponent(row.id)}`, {
+      state: { activeNav: '/transfer-portal' },
+    });
+  };
+
   const editStageMatches = useMemo(() => {
     const query = (editStage || '').trim().toLowerCase();
     if (!query) return allStageOptions;
@@ -316,6 +331,9 @@ const TransferPortalPage = () => {
 
     const nextStage = (editStage || '').trim();
     if (!nextStage) return;
+
+    const previousStage = (editRow.status || '').trim();
+    const stageChanged = previousStage !== nextStage;
 
     try {
       setEditSaving(true);
@@ -332,6 +350,61 @@ const TransferPortalPage = () => {
           variant: 'destructive',
         });
         return;
+      }
+
+      const notesText = (editNotes || '').trim() || 'No notes provided.';
+
+      // Append note to lead_notes when provided
+      const trimmedNote = (editNotes || '').trim();
+      if (trimmedNote.length > 0) {
+        try {
+          const { data: userData, error: userErr } = await supabase.auth.getUser();
+          if (!userErr) {
+            const user = userData?.user;
+            const createdBy = user?.id || null; // created_by is uuid
+            const emailPrefix = user?.email ? user.email.split('@')[0] : null;
+            const authorName = (user?.user_metadata as any)?.full_name || emailPrefix || user?.id || null;
+
+            const { error: insertErr } = await supabase.from('lead_notes').insert({
+              lead_id: editRow.id,
+              submission_id: (editRow as any).submission_id ?? null,
+              note: trimmedNote,
+              source: 'Transfer Portal',
+              created_by: createdBy,
+              author_name: authorName,
+            });
+
+            if (insertErr) {
+              console.warn('Failed to insert lead note', insertErr);
+            }
+          } else {
+            console.warn('Failed to fetch auth user for note insert', userErr);
+          }
+        } catch (e) {
+          console.warn('Unexpected error inserting lead note', e);
+        }
+      }
+
+      if (stageChanged) {
+        try {
+          const { error: slackError } = await supabase.functions.invoke('disposition-change-slack-alert', {
+            body: {
+              leadId: editRow.id,
+              submissionId: (editRow as any).submission_id ?? null,
+              leadVendor: editRow.lead_vendor ?? '',
+              insuredName: editRow.insured_name ?? null,
+              clientPhoneNumber: editRow.client_phone_number ?? null,
+              previousDisposition: editRow.status ?? null,
+              newDisposition: nextStage,
+              notes: notesText,
+            },
+          });
+          if (slackError) {
+            console.warn('Slack alert invoke failed:', slackError);
+          }
+        } catch (e) {
+          console.warn('Slack alert invoke threw:', e);
+        }
       }
 
       setData((prev) =>
@@ -403,6 +476,77 @@ const TransferPortalPage = () => {
 
   const handleRefresh = () => {
     fetchData(true);
+  };
+
+  const fetchNoteCounts = async (rows: TransferPortalRow[]) => {
+    const ids = rows.map((r) => r.id).filter(Boolean);
+    if (ids.length === 0) {
+      setNoteCounts({});
+      return;
+    }
+
+    const submissionMap = new Map<string, string>();
+    rows.forEach((r) => {
+      const submissionId = (r as any).submission_id as string | undefined;
+      if (submissionId) submissionMap.set(submissionId, r.id);
+    });
+
+    const counts: Record<string, number> = {};
+    ids.forEach((id) => {
+      counts[id] = 0;
+    });
+
+    // lead_notes counts
+    try {
+      const { data: leadNoteRows, error: leadNoteErr } = await (supabase as any)
+        .from('lead_notes')
+        .select('lead_id')
+        .in('lead_id', ids);
+
+      if (!leadNoteErr && Array.isArray(leadNoteRows)) {
+        leadNoteRows.forEach((row: { lead_id: string }) => {
+          if (row.lead_id) {
+            counts[row.lead_id] = (counts[row.lead_id] || 0) + 1;
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to fetch lead note counts', e);
+    }
+
+    // Legacy notes on daily_deal_flow
+    rows.forEach((r) => {
+      if ((r.notes || '').trim()) {
+        counts[r.id] = (counts[r.id] || 0) + 1;
+      }
+    });
+
+    // Legacy notes on leads.additional_notes via submission_id
+    const submissionIds = Array.from(submissionMap.keys());
+    if (submissionIds.length > 0) {
+      try {
+        const { data: leadRows, error: leadsErr } = await supabase
+          .from('leads')
+          .select('submission_id, additional_notes')
+          .in('submission_id', submissionIds);
+
+        if (!leadsErr && Array.isArray(leadRows)) {
+          leadRows.forEach((row) => {
+            const noteText = (row.additional_notes as string | null)?.trim();
+            if (noteText) {
+              const leadId = submissionMap.get(row.submission_id as string);
+              if (leadId) {
+                counts[leadId] = (counts[leadId] || 0) + 1;
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to fetch legacy leads notes', e);
+      }
+    }
+
+    setNoteCounts(counts);
   };
 
   const handleExport = () => {
@@ -664,22 +808,33 @@ const TransferPortalPage = () => {
                           </div>
                         ) : (
                           pageRows.map((row) => (
-                            <Card key={row.id} className="relative w-full" >
+                            <Card
+                              key={row.id}
+                              className="relative w-full cursor-pointer transition hover:shadow-md"
+                              onClick={() => handleView(row)}
+                            >
                               <CardContent className="p-2">
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="icon"
                                   className="absolute right-2 top-2 h-7 w-7"
-                                  onClick={() => handleOpenEdit(row)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEdit(row);
+                                  }}
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
                                     <div className="truncate text-sm font-semibold">{row.insured_name || "Unnamed"}</div>
-                                    <div className="mt-0.5 text-xs text-muted-foreground">
-                                      {row.client_phone_number || "N/A"}
+                                    <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                                      <span>{row.client_phone_number || "N/A"}</span>
+                                      <div className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px]">
+                                        <StickyNote className="h-3.5 w-3.5" />
+                                        <span>{noteCounts[row.id] ?? 0}</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -765,7 +920,15 @@ const TransferPortalPage = () => {
                           return (
                             <tr key={row.id} className="border-b last:border-0">
                               <td className="px-4 py-3">{row.insured_name || "Unnamed"}</td>
-                              <td className="px-4 py-3">{row.client_phone_number || "N/A"}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <span>{row.client_phone_number || "N/A"}</span>
+                                  <div className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px]">
+                                    <StickyNote className="h-3.5 w-3.5" />
+                                    <span>{noteCounts[row.id] ?? 0}</span>
+                                  </div>
+                                </div>
+                              </td>
                               <td className="px-4 py-3">
                                 <Badge variant="outline">{stageLabel}</Badge>
                               </td>

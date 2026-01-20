@@ -35,7 +35,8 @@ const statusOptions = [
   "Previously Sold BPO",
   "Needs BPO Callback",
   "Application Withdrawn",
-  "Pending Information"
+  "Pending Information",
+  "Return DID Successfully"
 ];
 
 const callResultOptions = [

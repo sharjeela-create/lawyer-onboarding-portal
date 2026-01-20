@@ -61,6 +61,8 @@ const AppShell = ({
   const { isCenterUser, loading: centerLoading } = useCenterUser();
   const navigate = useNavigate();
   const location = useLocation();
+  const locationState = (location.state as { activeNav?: string } | null) || null;
+  const activeNavOverride = locationState?.activeNav;
 
   const isDailyDealFlowRoute = location.pathname.startsWith('/daily-deal-flow');
 
@@ -278,7 +280,7 @@ const AppShell = ({
                   `${linkBaseClass} ${
                     isSidebarCollapsed ? "justify-center px-0" : ""
                   } ${
-                    isActive
+                    (activeNavOverride ? activeNavOverride === item.to : isActive)
                       ? "bg-primary/10 text-primary border-primary/20"
                       : "text-muted-foreground hover:bg-primary/5 hover:text-primary hover:border-primary/20"
                   }`

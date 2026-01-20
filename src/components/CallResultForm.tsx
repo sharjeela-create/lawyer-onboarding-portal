@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -7,10 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { CalendarIcon, CheckCircle, XCircle, Loader2, Shield, Wrench } from "lucide-react";
+import { CalendarIcon, CheckCircle, XCircle, Loader2, Shield, Wrench, Info, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { getTodayDateEST, getCurrentTimestampEST, formatDateESTLocale } from "@/lib/dateUtils";
@@ -40,6 +41,7 @@ const statusOptions = [
   "Needs BPO Callback",
   "Application Withdrawn",
   "Pending Information",
+  "Return DID Successfully",
   "Information Verification",
   "Attorney Submission",
   "Insurance Verification",
@@ -91,6 +93,8 @@ const returnedToCenterDQReasonOptions = [
   "TCPA",
   "Already a DQ in our System",
   "Already has Attorney Involved",
+  "Hit and run",
+  "Own Fault",
   "SOL Expired",
   "Other"
 ];
@@ -116,6 +120,7 @@ const pendingInformationReasonOptions = [
   "Pending Medical Records",
   "Awaiting Customer Response",
   "Additional Verification Needed",
+  "Police report",
   "Other"
 ];
 
@@ -127,6 +132,8 @@ const dqReasonOptions = [
   "TCPA",
   "Decline All Available Carriers",
   "Already a DQ in our System",
+  "Hit and run",
+  "Own Fault",
   "Other"
 ];
 
@@ -422,10 +429,17 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
   const [assignedAttorneyId, setAssignedAttorneyId] = useState<string>("");
   const [agents, setAgents] = useState<Array<{ key: string; label: string }>>([]);
   const [agentsLoading, setAgentsLoading] = useState(false);
+  const [closersLoading, setClosersLoading] = useState(false);
+  const [returnDidOpen, setReturnDidOpen] = useState(false);
   
   const { toast } = useToast();
-  const { leadVendors, loading: centersLoading } = useCenters();
+  const { centers, leadVendors, loading: centersLoading } = useCenters();
   const { attorneys, loading: attorneysLoading } = useAttorneys();
+
+  const centerDid = useMemo(() => {
+    const match = centers.find((c) => c.lead_vendor === leadVendor);
+    return match?.center_did || null;
+  }, [centers, leadVendor]);
 
   const prevVerifiedFieldValuesRef = useRef<Record<string, string>>({});
 
@@ -1490,13 +1504,8 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
           }
         } catch (disconnectedError) {
           console.error("Disconnected call notification failed:", disconnectedError);
-          // Don't fail the entire process if disconnected notification fails
         }
       }
-
-      // Personal sales portal notification has been removed
-      // Previously checked for licensedAgentAccount but this field is no longer used
-
       try {
         await syncModifiedVerifiedFieldsToLeads();
       } catch (leadSyncError: any) {
@@ -1515,11 +1524,9 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
         description: existingResult ? "Call result updated successfully" : "Call result saved successfully",
       });
 
-      // Call onSuccess callback to navigate to journey page
       if (onSuccess) {
         onSuccess();
       } else {
-        // Reset form if no callback provided (only for new entries)
         if (!existingResult) {
           setApplicationSubmitted(true);
           setStatus("");
@@ -1582,14 +1589,14 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
             <Label className="text-base font-semibold">
               Is lead qualified?
             </Label>
-            <div className="flex gap-4">
+            <div className="flex gap-4 items-center">
               <Button
                 type="button"
                 variant={applicationSubmitted === true ? "default" : "outline"}
                 onClick={() => {
                   setApplicationSubmitted(true);
                 }}
-                className="flex items-center gap-2"
+                className="flex-1"
               >
                 <CheckCircle className="h-4 w-4" />
                 Yes
@@ -1600,11 +1607,54 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                 onClick={() => {
                   setApplicationSubmitted(false);
                 }}
-                className="flex items-center gap-2"
+                className="flex-1"
               >
                 <XCircle className="h-4 w-4" />
                 No
               </Button>
+              <Dialog open={returnDidOpen} onOpenChange={setReturnDidOpen}>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="outline" className="flex items-center gap-2">
+                    <Info className="h-4 w-4" />
+                    Return DID
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Info className="h-4 w-4" />
+                      Return this lead to the center
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3 text-sm">
+                    <p>Share the DID below to return this call to the originating center.</p>
+                    <div className="flex items-center gap-2">
+                      <div className="rounded-md bg-muted px-3 py-2 font-mono text-sm">
+                        {centerDid || "No DID configured"}
+                      </div>
+                      {centerDid && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(centerDid);
+                              toast({ title: "Copied", description: "DID copied to clipboard" });
+                            } catch (e) {
+                              toast({ title: "Copy failed", description: "Unable to copy DID", variant: "destructive" });
+                            }
+                          }}
+                          aria-label="Copy DID"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -1627,24 +1677,26 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
               )}
             </div>
 
-          {/* Assign Attorney - shown for both Yes/No */}
-          <div>
-            <Label htmlFor="assignedAttorney" className="text-base font-semibold">
-              Assign Attorney
-            </Label>
-            <Select value={assignedAttorneyId || undefined} onValueChange={setAssignedAttorneyId}>
-              <SelectTrigger>
-                <SelectValue placeholder={attorneysLoading ? "Loading attorneys..." : "Select attorney"} />
-              </SelectTrigger>
-              <SelectContent>
-                {attorneys.map((a) => (
-                  <SelectItem key={a.user_id} value={a.user_id}>
-                    {a.full_name || a.primary_email || a.user_id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Assign Attorney - only when lead is qualified (Yes) */}
+          {applicationSubmitted === true && (
+            <div>
+              <Label htmlFor="assignedAttorney" className="text-base font-semibold">
+                Assign Attorney
+              </Label>
+              <Select value={assignedAttorneyId || undefined} onValueChange={setAssignedAttorneyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={attorneysLoading ? "Loading attorneys..." : "Select attorney"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {attorneys.map((a) => (
+                    <SelectItem key={a.user_id} value={a.user_id}>
+                      {a.full_name || a.primary_email || a.user_id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           
           {/* Fields for submitted applications */}
           {showSubmittedFields && (
