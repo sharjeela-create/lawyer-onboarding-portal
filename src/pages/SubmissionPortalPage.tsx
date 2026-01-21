@@ -923,7 +923,7 @@ const SubmissionPortalPage = () => {
                     <Card
                       key={stage.key}
                       className={
-                        "flex min-h-[560px] h-full w-[26rem] flex-col bg-muted/20 " +
+                        "flex min-h-[560px] w-[26rem] flex-col bg-muted/20 " +
                         stageTheme[stage.key].column +
                         (dragOverStage === stage.key ? " ring-2 ring-primary/30" : "")
                       }
@@ -950,7 +950,7 @@ const SubmissionPortalPage = () => {
                       </CardHeader>
                       <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
                         {pageRows.length === 0 ? (
-                          <div className="rounded-md border border-dashed border-muted-foreground/30 px-3 py-6 text-center text-xs text-muted-foreground">
+                          <div className="flex flex-1 h-full items-center justify-center rounded-md border border-dashed border-muted-foreground/30 px-3 py-6 text-center text-xs text-muted-foreground">
                             No leads
                           </div>
                         ) : (
