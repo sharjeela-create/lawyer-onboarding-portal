@@ -20,7 +20,7 @@ import { logCallUpdate, getLeadInfo } from "@/lib/callLogging";
 import { AppFixTaskTypeSelector } from "@/components/AppFixTaskTypeSelector";
 import { useCenters } from "@/hooks/useCenters";
 import { useAttorneys } from "@/hooks/useAttorneys";
-import { fetchAgentDropdownOptions } from "@/lib/agentOptions";
+import { fetchLicensedCloserOptions } from "@/lib/agentOptions";
 import type { Database } from "@/integrations/supabase/types";
 
 interface CallResultFormProps {
@@ -602,7 +602,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
     const fetchAgents = async () => {
       setAgentsLoading(true);
       try {
-        const options = await fetchAgentDropdownOptions();
+        const options = await fetchLicensedCloserOptions();
         setAgents(options);
       } catch (e) {
         console.error('Error fetching agents:', e);
