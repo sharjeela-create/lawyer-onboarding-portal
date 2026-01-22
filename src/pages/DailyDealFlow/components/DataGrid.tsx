@@ -90,7 +90,7 @@ export const DataGrid = ({
   ];
 
   const columns = [
-    "S.No", "Date", "Lead Vendor", "Customer Name", "Phone Number", "Closer", "Assigned Attorney", "Status",
+    "S.No", "Date", "Lead Vendor", "Customer Name", "Phone Number", "Closer", "Status",
     "Call Result", "Notes"
   ];
   
@@ -373,7 +373,6 @@ export const DataGrid = ({
                   case 'Customer Name': return 'insured_name';
                   case 'Phone Number': return 'client_phone_number';
                   case 'Closer': return 'agent';
-                  case 'Assigned Attorney': return 'assigned_attorney_id';
                   case 'Status': return 'status';
                   case 'Call Result': return 'call_result';
                   case 'Carrier': return 'carrier';
@@ -397,7 +396,6 @@ export const DataGrid = ({
                   column === 'Customer Name' ? 'w-32' :
                   column === 'Phone Number' ? 'w-28' :
                   column === 'Closer' ? 'w-20' :
-                  column === 'Assigned Attorney' ? 'w-28' :
                   column === 'Status' ? 'w-32' :
                   column === 'Call Result' ? 'w-24' :
                   column === 'Carrier' ? 'w-16' :

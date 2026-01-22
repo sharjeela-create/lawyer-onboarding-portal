@@ -1,28 +1,37 @@
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Loader2, UserCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { logCallUpdate, getLeadInfo, getAgentProfile } from "@/lib/callLogging";
+import { logCallUpdate, getLeadInfo } from "@/lib/callLogging";
 import { getTodayDateEST } from "@/lib/dateUtils";
 
-interface BufferAgent {
-  id: string;
+interface LicensedAgent {
+  user_id: string;
   display_name: string;
-  email: string;
-  status: 'available' | 'busy' | 'on_call' | 'offline';
 }
 
-interface LicensedAgent {
+interface AgentsRow {
   id: string;
-  display_name: string;
+  name: string | null;
   email: string;
-  status: 'available' | 'busy' | 'on_call' | 'offline';
 }
+
+interface AppUserRow {
+  user_id: string;
+  display_name: string | null;
+  email: string | null;
+}
+
+type AppUsersQueryClient = {
+  from: (
+    table: "app_users"
+  ) => {
+    select: (columns: string) => {
+      in: (column: "user_id", values: string[]) => Promise<{ data: AppUserRow[] | null }>;
+    };
+  };
+};
 
 interface StartVerificationModalProps {
   submissionId: string;
@@ -31,139 +40,65 @@ interface StartVerificationModalProps {
 
 export const StartVerificationModal = ({ submissionId, onVerificationStarted }: StartVerificationModalProps) => {
   const [open, setOpen] = useState(false);
-  const [bufferAgents, setBufferAgents] = useState<BufferAgent[]>([]);
   const [licensedAgents, setLicensedAgents] = useState<LicensedAgent[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [selectedLA, setSelectedLA] = useState<string>("");
-  const [agentType, setAgentType] = useState<'buffer' | 'licensed'>('buffer');
-  const [isRetentionCall, setIsRetentionCall] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchingAgents, setFetchingAgents] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (open) {
-      fetchBufferAgents();
-      fetchLicensedAgents();
-    }
-  }, [open]);
-
-  const fetchBufferAgents = async () => {
+  const fetchLicensedAgents = useCallback(async () => {
     setFetchingAgents(true);
     try {
-      // Get buffer agents with their current status
-      const { data: agents, error } = await supabase
+      const { data: agentStatus } = await supabase
         .from('agent_status')
-        .select(`
-          user_id,
-          status
-        `)
-        .eq('agent_type', 'buffer');
+        .select('user_id')
+        .eq('agent_type', 'licensed');
 
-      if (error) {
-        throw error;
+      const ids = agentStatus?.map((a) => a.user_id) || [];
+      let profiles: LicensedAgent[] = [];
+
+      if (ids.length > 0) {
+        const { data: fetchedProfiles } = await (supabase as unknown as AppUsersQueryClient)
+          .from('app_users')
+          .select('user_id, display_name, email')
+          .in('user_id', ids);
+
+        profiles = ((fetchedProfiles || []) as AppUserRow[]).map((u) => ({
+          user_id: u.user_id,
+          display_name: u.display_name || (u.email ? String(u.email).split('@')[0] : '')
+        }));
       }
 
-      // Get profiles separately for the buffer agents
-      const userIds = agents?.map(agent => agent.user_id) || [];
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .in('user_id', userIds);
-
-      if (profilesError) {
-        console.warn('Could not fetch profiles:', profilesError);
-      }
-
-      const formattedAgents = agents?.map(agent => {
-        const profile = profiles?.find(p => p.user_id === agent.user_id);
-        return {
-          id: agent.user_id,
-          display_name: profile?.display_name || 'Unknown',
-          email: '', // We'll get this separately if needed
-          status: agent.status as any
-        };
-      }) || [];
-
-      setBufferAgents(formattedAgents);
+      setLicensedAgents(profiles);
     } catch (error) {
-      console.error('Error fetching buffer agents:', error);
+      console.error('Error fetching licensed agents:', error);
       toast({
         title: "Error",
-        description: "Failed to load buffer agents",
+        description: "Failed to load closers",
         variant: "destructive",
       });
     } finally {
       setFetchingAgents(false);
     }
-  };
+  }, [toast]);
 
-  const fetchLicensedAgents = async () => {
-    try {
-      // Get licensed agents with their current status
-      const { data: agents, error } = await supabase
-        .from('agent_status')
-        .select(`
-          user_id,
-          status
-        `)
-        .eq('agent_type', 'licensed');
-
-      if (error) {
-        throw error;
-      }
-
-      // Get profiles separately for the licensed agents
-      const userIds = agents?.map(agent => agent.user_id) || [];
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .in('user_id', userIds);
-
-      if (profilesError) {
-        console.warn('Could not fetch licensed agent profiles:', profilesError);
-      }
-
-      const formattedAgents = agents?.map(agent => {
-        const profile = profiles?.find(p => p.user_id === agent.user_id);
-        return {
-          id: agent.user_id,
-          display_name: profile?.display_name || 'Unknown',
-          email: '', // We'll get this separately if needed
-          status: agent.status as any
-        };
-      }) || [];
-
-      setLicensedAgents(formattedAgents);
-    } catch (error) {
-      console.error('Error fetching licensed agents:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load licensed agents",
-        variant: "destructive",
-      });
+  useEffect(() => {
+    if (open) {
+      fetchLicensedAgents();
     }
-  };
+  }, [open, fetchLicensedAgents]);
 
   const startVerification = async () => {
-    // Validation based on agent type
-    if (agentType === 'buffer' && !selectedAgent) {
+    if (!selectedLA) {
       toast({
         title: "Error",
-        description: "Please select a buffer agent",
+        description: "Please select a closer",
         variant: "destructive",
       });
       return;
     }
 
-    if (agentType === 'licensed' && !selectedLA) {
-      toast({
-        title: "Error",
-        description: "Please select a licensed agent",
-        variant: "destructive",
-      });
-      return;
-    }
+    const selectedCloser = licensedAgents.find(a => a.user_id === selectedLA);
 
     setLoading(true);
     try {
@@ -187,46 +122,22 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
         };
       }
 
-      let sessionData;
-      let notificationPayload = {};
-
-      if (agentType === 'buffer') {
-        // Traditional buffer agent workflow
-        const bufferAgentName = bufferAgents.find(a => a.id === selectedAgent)?.display_name || 'Buffer Agent';
-        sessionData = {
-          submission_id: submissionId,
-          buffer_agent_id: selectedAgent,
-          status: 'in_progress',
-          is_retention_call: isRetentionCall,
-          started_at: new Date().toISOString()
-        };
-        notificationPayload = {
-          type: 'verification_started',
-          submissionId,
-          agentType: 'buffer',
-          agentName: bufferAgentName,
-          bufferAgentName: bufferAgentName,
-          leadData
-        };
-      } else {
-        // Direct LA workflow - agent takes call directly and claims it
-        const licensedAgentName = licensedAgents.find(a => a.id === selectedLA)?.display_name || 'Licensed Agent';
-        sessionData = {
-          submission_id: submissionId,
-          licensed_agent_id: selectedLA,
-          status: 'in_progress',
-          is_retention_call: isRetentionCall,
-          started_at: new Date().toISOString()
-        };
-        notificationPayload = {
-          type: 'verification_started',
-          submissionId,
-          agentType: 'licensed',
-          agentName: licensedAgentName,
-          licensedAgentName: licensedAgentName,
-          leadData
-        };
-      }
+      const licensedAgentName = selectedCloser?.display_name || 'Closer';
+      const sessionData = {
+        submission_id: submissionId,
+        licensed_agent_id: selectedLA,
+        status: 'in_progress',
+        is_retention_call: false,
+        started_at: new Date().toISOString()
+      };
+      const notificationPayload = {
+        type: 'verification_started',
+        submissionId,
+        agentType: 'licensed',
+        agentName: licensedAgentName,
+        licensedAgentName: licensedAgentName,
+        leadData
+      };
 
       // Create verification session
       const { data: session, error: sessionError } = await supabase
@@ -239,10 +150,10 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
         throw sessionError;
       }
 
-      // Update the lead with retention flag
+      // Update the lead with retention flag (always false now)
       const { error: leadUpdateError } = await supabase
         .from('leads')
-        .update({ is_retention_call: isRetentionCall } as any)
+        .update({ is_retention_call: false })
         .eq('submission_id', submissionId);
 
       if (leadUpdateError) {
@@ -262,8 +173,8 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
         throw initError;
       }
 
-      // Update agent status based on workflow type
-      const agentId = agentType === 'buffer' ? selectedAgent : selectedLA;
+      // Update agent status
+      const agentId = selectedLA;
       
       // Check if agent status exists
       const { data: existingStatus } = await supabase
@@ -291,7 +202,7 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
           .insert({
             user_id: agentId,
             status: 'on_call',
-            agent_type: agentType,
+            agent_type: 'licensed',
             current_session_id: session.id,
             last_activity: new Date().toISOString()
           });
@@ -314,66 +225,31 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
 
       // Log the verification started event
       const { customerName, leadVendor } = await getLeadInfo(submissionId);
-      const selectedAgentId = agentType === 'buffer' ? selectedAgent : selectedLA;
-      const selectedAgentName = agentType === 'buffer' 
-        ? bufferAgents.find(a => a.id === selectedAgent)?.display_name || 'Buffer Agent'
-        : licensedAgents.find(a => a.id === selectedLA)?.display_name || 'Licensed Agent';
 
       await logCallUpdate({
         submissionId,
-        agentId: selectedAgentId,
-        agentType,
-        agentName: selectedAgentName,
+        agentId: selectedLA,
+        agentType: 'licensed',
+        agentName: licensedAgentName,
         eventType: 'verification_started',
         eventDetails: {
-          workflow_type: agentType,
+          workflow_type: 'licensed',
           session_id: session.id,
           started_by: user.id
         },
         verificationSessionId: session.id,
         customerName,
         leadVendor,
-        isRetentionCall: isRetentionCall
+        isRetentionCall: false
       });
 
-      // Update daily_deal_flow if entry exists for today's date (buffer workflow only)
-      if (agentType === 'buffer') {
-        const bufferAgentName = bufferAgents.find(a => a.id === selectedAgent)?.display_name || 'N/A';
-        const todayDateString = getTodayDateEST(); // Use EST date to match database
-        
-        // Check if daily_deal_flow entry exists with matching submission_id and today's date
-        const { data: existingDailyDealEntry } = await supabase
-          .from('daily_deal_flow')
-          .select('id, date, submission_id')
-          .eq('submission_id', submissionId)
-          .eq('date', todayDateString)
-          .maybeSingle();
-
-        if (existingDailyDealEntry) {
-          // Update the buffer_agent field and retention flag if entry exists AND date matches today
-          await supabase
-            .from('daily_deal_flow')
-            .update({ 
-              buffer_agent: bufferAgentName,
-              is_retention_call: isRetentionCall
-            } as any)
-            .eq('id', existingDailyDealEntry.id);
-          
-          console.log(`Updated daily_deal_flow buffer_agent to ${bufferAgentName} and is_retention_call to ${isRetentionCall} for submission ${submissionId} on ${todayDateString}`);
-        } else {
-          console.log(`No daily_deal_flow entry found for submission ${submissionId} on ${todayDateString}`);
-        }
-      }
 
       toast({
         title: "Success",
-        description: agentType === 'buffer' 
-          ? "Verification session started with buffer agent" 
-          : "Verification session started with licensed agent",
+        description: "Verification session started with closer",
       });
 
       setOpen(false);
-      setSelectedAgent("");
       setSelectedLA("");
       onVerificationStarted?.(session.id);
     } catch (error) {
@@ -390,164 +266,72 @@ export const StartVerificationModal = ({ submissionId, onVerificationStarted }: 
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'available': return 'text-green-600';
-      case 'on_call': return 'text-red-600';
-      case 'busy': return 'text-yellow-600';
-      case 'offline': return 'text-gray-400';
-      default: return 'text-gray-400';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'available': return 'Available';
-      case 'on_call': return 'On Call';
-      case 'busy': return 'Busy';
-      case 'offline': return 'Offline';
-      default: return 'Unknown';
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="flex items-center gap-2">
-          <UserCheck className="h-4 w-4" />
-          Start Verification
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Start Verification Process</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* Agent Type Selection */}
-          <div className="space-y-2">
-            <Label>Select Workflow Type</Label>
-            <Select value={agentType} onValueChange={(value: 'buffer' | 'licensed') => {
-              setAgentType(value);
-              setSelectedAgent("");
-              setSelectedLA("");
-            }}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="buffer">Buffer Agent → LA Transfer</SelectItem>
-                <SelectItem value="licensed">Direct LA Call</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    <>
+      <Button className="flex items-center gap-2" onClick={() => setOpen(true)}>
+        <UserCheck className="h-4 w-4" />
+        Start Verification
+      </Button>
 
-          {/* Buffer Agent Selection (Traditional Workflow) */}
-          {agentType === 'buffer' && (
-            <div className="space-y-2">
-              <Label htmlFor="buffer-agent">Select Buffer Agent</Label>
-              {fetchingAgents ? (
-                <div className="flex items-center gap-2 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Loading agents...</span>
-                </div>
-              ) : (
-                <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a buffer agent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bufferAgents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        <div className="flex items-center justify-between w-full">
-                          <span>{agent.display_name}</span>
-                          <span className={`ml-2 text-xs ${getStatusColor(agent.status)}`}>
-                            {getStatusLabel(agent.status)}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {bufferAgents.length === 0 && !fetchingAgents && (
-                <p className="text-sm text-muted-foreground">
-                  No buffer agents available. Switch to "Direct LA Call" workflow.
-                </p>
-              )}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Start Verification Process</h2>
+
+            <div className="mb-4">
+              <label className="block font-medium mb-2">Select Workflow Type</label>
+              <select
+                value="licensed"
+                disabled
+                className="border rounded px-2 py-1 w-full bg-muted text-muted-foreground"
+              >
+                <option value="licensed">Closer</option>
+              </select>
             </div>
-          )}
-
-          {/* Licensed Agent Selection (Direct Workflow) */}
-          {agentType === 'licensed' && (
-            <div className="space-y-2">
-              <Label htmlFor="licensed-agent">Select Licensed Agent</Label>
+            
+            {/* Licensed Agent Selection (Closer Workflow) */}
+            <div className="mb-4">
+              <label className="block font-medium mb-2">Select Closer</label>
               {fetchingAgents ? (
                 <div className="flex items-center gap-2 py-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Loading agents...</span>
+                  <span className="text-sm text-muted-foreground">Loading closers...</span>
                 </div>
               ) : (
-                <Select value={selectedLA} onValueChange={setSelectedLA}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a licensed agent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {licensedAgents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        <div className="flex items-center justify-between w-full">
-                          <span>{agent.display_name}</span>
-                          <span className={`ml-2 text-xs ${getStatusColor(agent.status)}`}>
-                            {getStatusLabel(agent.status)}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <select
+                  value={selectedLA}
+                  onChange={(e) => setSelectedLA(e.target.value)}
+                  className="border rounded px-2 py-1 w-full"
+                >
+                  <option value="">Select Closer</option>
+                  {licensedAgents.map((agent) => (
+                    <option key={agent.user_id} value={agent.user_id}>
+                      {agent.display_name}
+                    </option>
+                  ))}
+                </select>
               )}
               {licensedAgents.length === 0 && !fetchingAgents && (
-                <p className="text-sm text-muted-foreground">
-                  No licensed agents available. Please ensure licensed agents are registered in the system.
+                <p className="text-sm text-muted-foreground mt-1">
+                  No closers available. Please ensure closers are registered in the system.
                 </p>
               )}
             </div>
-          )}
 
-          {/* Retention Call Toggle */}
-          <div className="flex items-center justify-between space-x-2 border-t pt-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="retention-call" className="text-base">
-                Mark as Retention Call
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                This call will be tracked as a retention team call
-              </p>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={startVerification} 
+                disabled={!selectedLA || loading}
+              >
+                {loading ? 'Starting...' : 'Start Verification'}
+              </Button>
             </div>
-            <Switch
-              id="retention-call"
-              checked={isRetentionCall}
-              onCheckedChange={setIsRetentionCall}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={startVerification} 
-              disabled={
-                (agentType === 'buffer' && !selectedAgent) || 
-                (agentType === 'licensed' && !selectedLA) || 
-                loading
-              }
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Start Verification
-            </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+    </>
   );
 };

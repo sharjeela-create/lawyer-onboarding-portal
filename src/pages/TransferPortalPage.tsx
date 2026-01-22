@@ -107,6 +107,9 @@ const submissionPortalStages = [
   "Retainer Signed Pending",
   "Retainer Signed",
   "Attorney Decision",
+  "Pending Signature",
+  "Pending Police Report",
+  "Signed & Police Report Pending",
 ] as const;
 
 const allStageOptions = [

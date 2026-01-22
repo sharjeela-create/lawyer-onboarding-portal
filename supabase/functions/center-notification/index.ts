@@ -21,7 +21,13 @@ serve(async (req) => {
     }
     // Center mapping for different lead vendors
     const leadVendorCenterMapping = {
-      "Zupax Marketing": "#crash-guard-team-zupax-marketing"
+      "Zupax Marketing": "#crash-guard-team-zupax-bpo",
+      "Prime BPO":"#crash-guard-team-prime-bpo",
+      "Brainiax BPO":"#crash-guard-team-brainiax-bpo",
+      "KP Leads":"#crash-guard-team-kp-leads",
+      "Hello Support Network":"#crash-guard-team-hello-support-network",
+      "Fonex Media":"#crash-guard-team-fonex-media",
+      "Rapid Squad":"#crash-guard-team-rapid-squad"
     };
     // Send notifications for all call results (submitted or not)
     // No filtering - centers need to know about all outcomes

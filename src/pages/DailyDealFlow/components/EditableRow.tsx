@@ -86,7 +86,7 @@ const statusOptions = Array.from(
 );
 
 const callResultOptions = [
-  "Submitted", "Underwriting", "Not Submitted"
+  "Qualified", "Underwriting", "Not Qualified"
 ];
 
 export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePermissions = true, isDuplicate = false, attorneyById, attorneys = [] }: EditableRowProps) => {
@@ -250,11 +250,11 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
   // Call Result color badge
   const getCallResultBadge = (result?: string) => {
     switch (result?.toLowerCase()) {
-      case 'submitted':
+      case 'qualified':
         return 'bg-green-600 text-white';
       case 'underwriting':
         return 'bg-yellow-600 text-white';
-      case 'not submitted':
+      case 'not qualified':
         return 'bg-red-600 text-white';
       default:
         return 'bg-gray-500 text-white';
@@ -948,29 +948,6 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
             </Select>
           </td>
 
-          {/* Assigned Attorney */}
-          <td className="border border-border px-3 py-2">
-            <Select
-              value={editData.assigned_attorney_id || '__NONE__'}
-              onValueChange={(value) => updateField('assigned_attorney_id', value === '__NONE__' ? null : value)}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Attorney" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__NONE__">Unassigned</SelectItem>
-                {attorneys.map((attorney) => {
-                  const label = attorney.full_name?.trim() || attorney.primary_email?.trim() || attorney.user_id;
-                  return (
-                    <SelectItem key={attorney.user_id} value={attorney.user_id}>
-                      {label}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </td>
-
           {/* Status */}
           <td className="border border-border px-3 py-2">
             <div className="relative">
@@ -1128,15 +1105,6 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
           {row.agent ? (
             <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap inline-block ${getAgentBadge(row.agent)}`}>
               {row.agent}
-            </span>
-          ) : ''}
-        </td>
-
-        {/* Assigned Attorney */}
-        <td className="border border-border px-2 py-2 text-sm w-28">
-          {assignedAttorneyLabel ? (
-            <span className="px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap inline-block bg-muted text-foreground">
-              {assignedAttorneyLabel.length > 16 ? assignedAttorneyLabel.substring(0, 16) + '...' : assignedAttorneyLabel}
             </span>
           ) : ''}
         </td>

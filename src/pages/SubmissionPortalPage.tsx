@@ -35,6 +35,9 @@ const kanbanStages = [
   { key: "stage_6", label: "Retainer Signed Pending" },
   { key: "stage_7", label: "Retainer Signed" },
   { key: "stage_8", label: "Attorney Decision" },
+  { key: "stage_9", label: "Pending Signature" },
+  { key: "stage_10", label: "Pending Police Report" },
+  { key: "stage_11", label: "Signed & Police Report Pending" },
 ] as const;
 
 type StageKey = (typeof kanbanStages)[number]["key"];
@@ -48,6 +51,9 @@ const stageSlugMap: Record<string, StageKey> = {
   stage_6_retainer_signed_pending: "stage_6",
   stage_7_retainer_signed: "stage_7",
   stage_8_attorney_decision: "stage_8",
+  stage_9_pending_signature: "stage_9",
+  stage_10_pending_police_report: "stage_10",
+  stage_11_signed_police_report_pending: "stage_11",
   information_verification: "stage_1",
   attorney_submission: "stage_2",
   insurance_verification: "stage_3",
@@ -56,6 +62,9 @@ const stageSlugMap: Record<string, StageKey> = {
   retainer_signed_pending: "stage_6",
   retainer_signed: "stage_7",
   attorney_decision: "stage_8",
+  pending_signature: "stage_9",
+  pending_police_report: "stage_10",
+  signed_police_report_pending: "stage_11",
 };
 
 const deriveStageKey = (row: SubmissionPortalRow): StageKey => {
@@ -110,6 +119,18 @@ const stageTheme: Record<StageKey, { column: string; header: string }> = {
   stage_8: {
     column: "border-t-4 border-rose-500/50 bg-rose-50/50 dark:bg-rose-950/15",
     header: "bg-rose-50/60 dark:bg-rose-950/10",
+  },
+  stage_9: {
+    column: "border-t-4 border-slate-500/50 bg-slate-50/50 dark:bg-slate-950/15",
+    header: "bg-slate-50/60 dark:bg-slate-950/10",
+  },
+  stage_10: {
+    column: "border-t-4 border-lime-500/50 bg-lime-50/50 dark:bg-lime-950/15",
+    header: "bg-lime-50/60 dark:bg-lime-950/10",
+  },
+  stage_11: {
+    column: "border-t-4 border-indigo-500/50 bg-indigo-50/50 dark:bg-indigo-950/15",
+    header: "bg-indigo-50/60 dark:bg-indigo-950/10",
   },
 };
 
@@ -907,9 +928,12 @@ const SubmissionPortalPage = () => {
             </div>
           </div>
 
-          <div className="flex min-h-[650px] flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-auto p-4">
-              <div className="flex min-h-0 min-w-[2200px] gap-3 pr-2">
+          <div className="mt-4 min-h-0 flex-1 overflow-auto">
+            <div className="p-4">
+              <div
+                className="flex min-h-0 gap-3 pr-2"
+                style={{ minWidth: `${kanbanStages.length * 18}rem` }}
+              >
                 {kanbanStages.map((stage) => {
                   const rows = leadsByStage.get(stage.key) || [];
                   const pageSize = 25;

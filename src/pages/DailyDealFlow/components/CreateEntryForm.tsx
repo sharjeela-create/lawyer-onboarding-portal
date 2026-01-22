@@ -40,7 +40,7 @@ const statusOptions = [
 ];
 
 const callResultOptions = [
-  "Submitted", "Underwriting", "Not Submitted"
+  "Qualified", "Underwriting", "Not Qualified"
 ];
 
 // Function to generate unique CB submission ID

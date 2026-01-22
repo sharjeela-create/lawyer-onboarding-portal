@@ -23,8 +23,6 @@ interface GridToolbarProps {
   onDateToFilterChange: (date: Date | undefined) => void;
   licensedAgentFilter: string;
   onLicensedAgentFilterChange: (value: string) => void;
-  assignedAttorneyFilter: string;
-  onAssignedAttorneyFilterChange: (value: string) => void;
   attorneys: AttorneyProfile[];
   leadVendorFilter: string;
   onLeadVendorFilterChange: (value: string) => void;
@@ -50,8 +48,6 @@ export const GridToolbar = ({
   onDateToFilterChange,
   licensedAgentFilter,
   onLicensedAgentFilterChange,
-  assignedAttorneyFilter,
-  onAssignedAttorneyFilterChange,
   attorneys,
   leadVendorFilter,
   onLeadVendorFilterChange,
@@ -122,9 +118,9 @@ export const GridToolbar = ({
 
   const callResultOptions = [
     "All Call Results",
+    "Qualified",
     "Underwriting",
-    "Submitted",
-    "Not Submitted"
+    "Not Qualified"
   ];
 
   const retentionOptions = [
@@ -167,7 +163,6 @@ export const GridToolbar = ({
     onDateFromFilterChange(undefined);
     onDateToFilterChange(undefined);
     onLicensedAgentFilterChange(ALL_OPTION);
-    onAssignedAttorneyFilterChange(ALL_OPTION);
     onLeadVendorFilterChange(ALL_OPTION);
     onStatusFilterChange(ALL_OPTION);
     onCallResultFilterChange(ALL_OPTION);
@@ -177,7 +172,6 @@ export const GridToolbar = ({
 
   const hasActiveFilters = searchTerm || dateFilter || dateFromFilter || dateToFilter ||
     (licensedAgentFilter && licensedAgentFilter !== ALL_OPTION) || 
-    (assignedAttorneyFilter && assignedAttorneyFilter !== ALL_OPTION) ||
     (leadVendorFilter && leadVendorFilter !== ALL_OPTION) || 
     (statusFilter && statusFilter !== ALL_OPTION) || 
     (callResultFilter && callResultFilter !== ALL_OPTION) ||
@@ -352,30 +346,6 @@ export const GridToolbar = ({
                   {closer}
                 </SelectItem>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Assigned Attorney Filter */}
-        <div>
-          <Label className="text-sm font-medium">
-            Assigned Attorney
-            {assignedAttorneyFilter && assignedAttorneyFilter !== ALL_OPTION && <span className="text-blue-600 ml-1">●</span>}
-          </Label>
-          <Select value={assignedAttorneyFilter || ALL_OPTION} onValueChange={onAssignedAttorneyFilterChange}>
-            <SelectTrigger className={cn("mt-1", assignedAttorneyFilter && assignedAttorneyFilter !== ALL_OPTION && "ring-2 ring-blue-200")}>
-              <SelectValue placeholder="All Attorneys" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_OPTION}>All Attorneys</SelectItem>
-              {attorneys.map((attorney) => {
-                const label = attorney.full_name?.trim() || attorney.primary_email?.trim() || attorney.user_id;
-                return (
-                  <SelectItem key={attorney.user_id} value={attorney.user_id}>
-                    {label}
-                  </SelectItem>
-                );
-              })}
             </SelectContent>
           </Select>
         </div>

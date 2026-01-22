@@ -431,6 +431,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
   const [agentsLoading, setAgentsLoading] = useState(false);
   const [closersLoading, setClosersLoading] = useState(false);
   const [returnDidOpen, setReturnDidOpen] = useState(false);
+  const [qualifiedStage, setQualifiedStage] = useState("");
   
   const { toast } = useToast();
   const { centers, leadVendors, loading: centersLoading } = useCenters();
@@ -1284,7 +1285,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                 buffer_agent: bufferAgent,
                 agent: agentWhoTookCall,
                 status: finalStatus,
-                call_result: applicationSubmitted === true ? "Submitted" : "Not Submitted",
+                call_result: applicationSubmitted === true ? "Qualified" : "Not Qualified",
                 notes: finalNotes,
                 from_callback: callSource === "Agent Callback",
                 is_callback: submissionId.startsWith('CB') || submissionId.startsWith('CBB'),
@@ -1294,7 +1295,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                 carrier_attempted_1: status === "GI - Currently DQ" ? carrierAttempted1 : null,
                 carrier_attempted_2: status === "GI - Currently DQ" ? carrierAttempted2 : null,
                 carrier_attempted_3: status === "GI - Currently DQ" ? carrierAttempted3 : null,
-                // Accident-related fields
                 accident_date: accidentDate ? format(accidentDate, "yyyy-MM-dd") : null,
                 prior_attorney_involved: priorAttorneyInvolved,
                 prior_attorney_details: priorAttorneyDetails || null,
@@ -1316,12 +1316,11 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
               console.error('Error updating daily deal flow:', updateError);
             } else {
               console.log('Daily deal flow updated successfully:', updateResult);
-              // Use the submission_id returned by the function for Google Sheets
               finalSubmissionId = updateResult.submission_id || submissionId;
             }
           } catch (syncError) {
             console.error('Sync to daily_deal_flow failed:', syncError);
-          }      // Update verification session status to completed if one exists
+          }     
       try {
         const { error: sessionUpdateError } = await supabase
           .from('verification_sessions')
@@ -1337,17 +1336,10 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
         }
       } catch (sessionError) {
         console.error("Verification session update failed:", sessionError);
-        // Don't fail the entire process if session update fails
       }
 
-      // Google Sheets updates have been removed - data is tracked in daily_deal_flow table only
-
-      // Send Slack notification for submitted applications
       if (applicationSubmitted === true) {
         try {
-          
-          
-          // First, fetch the lead data for the Slack notification
           const { data: leadData, error: leadError } = await supabase
             .from("leads")
             .select("*")
@@ -1355,11 +1347,23 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
             .single();
 
           if (!leadError && leadData) {
+            const qualifiedStatusMap: Record<string, string> = {
+              "Qualified Missing Information": "Qualified: Missing Information",
+              "Qualified Awaiting Police Report": "Qualified: Awaiting Police Report",
+              "Qualified Awaiting to be signed": "Qualified: Awaiting to be Signed",
+            };
+
+            const slackStatus = applicationSubmitted === true
+              ? (qualifiedStatusMap[qualifiedStage] || qualifiedStage || 'Submitted')
+              : (qualifiedStatusMap[status] || status || 'Submitted');
+
             const callResultForSlack = {
               application_submitted: applicationSubmitted,
               buffer_agent: bufferAgent,
               agent_who_took_call: agentWhoTookCall,
               lead_vendor: leadData.lead_vendor || leadVendor || 'N/A',
+              status: slackStatus,
+              qualified_stage: qualifiedStage || null,
               notes: finalNotes,
               dq_reason: showStatusReasonDropdown ? statusReason : null,
               ...(accidentDate && { accident_date: accidentDate }),
@@ -1385,21 +1389,17 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
 
             if (slackError) {
               console.error("Error sending Slack notification:", slackError);
-              // Don't fail the entire process if Slack fails
             } else {
               console.log("Slack notification sent successfully");
             }
           }
         } catch (slackError) {
           console.error("Slack notification failed:", slackError);
-          // Don't fail the entire process if Slack fails
         }
       }
 
-      // Send center notification for NOT submitted applications
       if (applicationSubmitted === false) {
         try {
-          // First, fetch the lead data for the center notification
           const { data: leadData, error: leadError } = await supabase
             .from("leads")
             .select("*")
@@ -1415,7 +1415,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
               buffer_agent: bufferAgent,
               agent_who_took_call: agentWhoTookCall,
               lead_vendor: leadData.lead_vendor || leadVendor || 'N/A',
-              // Accident information
               accident_date: accidentDate ? format(accidentDate, "yyyy-MM-dd") : null,
               accident_location: accidentLocation || null,
               accident_scenario: accidentScenario || null,
@@ -1446,21 +1445,17 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
 
             if (centerError) {
               console.error("Error sending center notification:", centerError);
-              // Don't fail the entire process if center notification fails
             } else {
               console.log("Center notification sent successfully");
             }
           }
         } catch (centerError) {
           console.error("Center notification failed:", centerError);
-          // Don't fail the entire process if center notification fails
         }
       }
 
-      // Send disconnected call notification for disconnected statuses
       if (applicationSubmitted === false && (finalStatus === 'Disconnected' || finalStatus === 'Disconnected - Never Retransferred')) {
         try {
-          // First, fetch the lead data for the disconnected call notification
           const { data: leadData, error: leadError } = await supabase
             .from("leads")
             .select("*")
@@ -1497,7 +1492,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
 
             if (disconnectedError) {
               console.error("Error sending disconnected call notification:", disconnectedError);
-              // Don't fail the entire process if disconnected notification fails
             } else {
               console.log("Disconnected call notification sent successfully");
             }
@@ -1658,8 +1652,9 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
             </div>
           </div>
 
-          {/* Call Source Dropdown - REQUIRED */}
-          <div>
+          {/* Call Source Dropdown - REQUIRED (for non-qualified leads layout stays the same) */}
+          {showNotSubmittedFields && (
+            <div>
               <Label htmlFor="callSource" className="text-base font-semibold">
                 Call Source <span className="text-red-500">*</span>
               </Label>
@@ -1676,26 +1671,6 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                 <p className="text-sm text-red-500 mt-1">Call source is required</p>
               )}
             </div>
-
-          {/* Assign Attorney - only when lead is qualified (Yes) */}
-          {applicationSubmitted === true && (
-            <div>
-              <Label htmlFor="assignedAttorney" className="text-base font-semibold">
-                Assign Attorney
-              </Label>
-              <Select value={assignedAttorneyId || undefined} onValueChange={setAssignedAttorneyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={attorneysLoading ? "Loading attorneys..." : "Select attorney"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {attorneys.map((a) => (
-                    <SelectItem key={a.user_id} value={a.user_id}>
-                      {a.full_name || a.primary_email || a.user_id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           )}
           
           {/* Fields for submitted applications */}
@@ -1704,8 +1679,21 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
               {/* Call Information - Only shown when application is submitted */}
               <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
                 <h3 className="font-semibold text-gray-800">Call Information</h3>
-                
-                <div className="grid grid-cols-1 gap-4">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="callSourceQualified">Call Source</Label>
+                    <Select value={callSource || undefined} onValueChange={setCallSource}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select call source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="BPO Transfer">BPO Transfer</SelectItem>
+                        <SelectItem value="Agent Callback">Agent Callback</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div>
                     <Label htmlFor="agentWhoTookCall">Agent who took the call</Label>
                     <Select value={agentWhoTookCall} onValueChange={setAgentWhoTookCall}>
@@ -1721,6 +1709,22 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="qualifiedStage" className="text-base font-semibold">
+                    Status / Stage
+                  </Label>
+                  <Select value={qualifiedStage} onValueChange={setQualifiedStage}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Qualified Missing Information">Qualified Missing Information</SelectItem>
+                      <SelectItem value="Qualified Awaiting Police Report">Qualified Awaiting Police Report</SelectItem>
+                      <SelectItem value="Qualified Awaiting to be signed">Qualified Awaiting to be signed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             <div className="space-y-4 p-4 border rounded-lg bg-green-50">

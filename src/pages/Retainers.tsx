@@ -38,7 +38,8 @@ const Retainers = () => {
   // Track which lead cards are expanded (show accident details)
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const [dateFilter, setDateFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [vendorFilter, setVendorFilter] = useState('all');
+  const [vendorOptions, setVendorOptions] = useState<string[]>(['all']);
   const [nameFilter, setNameFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -66,7 +67,6 @@ const Retainers = () => {
       navigate('/auth');
     }
     
-    // Redirect restricted users to daily-deal-flow
     if (!loading && user && isRestrictedUser(user.id)) {
       navigate('/daily-deal-flow');
     }
@@ -74,8 +74,8 @@ const Retainers = () => {
 
   useEffect(() => {
     if (user) {
-      // Load recent leads initially
       fetchLeads();
+      fetchVendors();
     }
   }, [user]);
 
@@ -113,25 +113,52 @@ const Retainers = () => {
     }
   };
 
+  const fetchVendors = async () => {
+    try {
+      // centers table isn't in generated types; use a narrow typed wrapper
+      const supabaseCenters = supabase as unknown as {
+        from: (table: string) => {
+          select: (cols: string) => {
+            not: (col: string, op: string, val: unknown) => Promise<{
+              data: { lead_vendor: string | null }[] | null;
+              error: unknown;
+            }>;
+          };
+        };
+      };
+
+      const { data, error } = await supabaseCenters
+        .from('centers')
+        .select('lead_vendor')
+        .not('lead_vendor', 'is', null);
+
+      if (error) throw error;
+
+      const vendors = new Set<string>();
+      const rows = (Array.isArray(data) ? data : []) as { lead_vendor: string | null }[];
+      rows.forEach((row) => {
+        const vendor = (row.lead_vendor || '').trim();
+        if (vendor) vendors.add(vendor);
+      });
+
+      setVendorOptions(['all', ...Array.from(vendors)]);
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+      // Keep existing options (all) on error to avoid blocking UI
+    }
+  };
+
   useEffect(() => {
     applyFilters();
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [leads, dateFilter, statusFilter]);
+    setCurrentPage(1); 
+  }, [leads, dateFilter, vendorFilter, nameFilter]);
 
-  // Debounced search effect - wait 500ms after user stops typing
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (nameFilter.trim()) {
-        // When searching, fetch from server with search term
-        setIsSearching(true);
-        fetchLeads(nameFilter.trim()).finally(() => setIsSearching(false));
-      } else if (nameFilter === '' && leads.length > 0) {
-        // When clearing search, fetch all recent leads only if we have data
-        setIsSearching(true);
-        fetchLeads().finally(() => setIsSearching(false));
-      }
-      setCurrentPage(1); // Reset to first page when search changes
-    }, 500); // Wait 500ms after user stops typing
+      setIsSearching(true);
+      fetchLeads(nameFilter.trim() || undefined).finally(() => setIsSearching(false));
+      setCurrentPage(1); 
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [nameFilter]);
@@ -144,6 +171,19 @@ const Retainers = () => {
         .select(`*`, { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(0, 9999);
+
+      if (searchTerm) {
+        const term = `%${searchTerm}%`;
+        query = query.or(
+          [
+            `customer_full_name.ilike.${term}`,
+            `phone_number.ilike.${term}`,
+            `submission_id.ilike.${term}`,
+            `email.ilike.${term}`,
+            `lead_vendor.ilike.${term}`,
+          ].join(',')
+        );
+      }
 
       const { data: leadsData, error: leadsError } = await query;
 
@@ -182,8 +222,34 @@ const Retainers = () => {
   // No analytics-related functions
 
   const applyFilters = () => {
-    setFilteredLeads(leads);
-  };  const getLeadStatus = (lead: LeadWithCallResult) => {
+    const searchLower = nameFilter.trim().toLowerCase();
+
+    let filtered = leads;
+
+    if (dateFilter) {
+      filtered = filtered.filter((lead) => lead.created_at?.startsWith(dateFilter));
+    }
+
+    if (vendorFilter !== 'all') {
+      const targetVendor = vendorFilter.toLowerCase();
+      filtered = filtered.filter((lead) => (lead.lead_vendor || '').toLowerCase() === targetVendor);
+    }
+
+    if (searchLower) {
+      filtered = filtered.filter((lead) => {
+        return (
+          (lead.customer_full_name || '').toLowerCase().includes(searchLower) ||
+          (lead.phone_number || '').toLowerCase().includes(searchLower) ||
+          (lead.submission_id || '').toLowerCase().includes(searchLower) ||
+          (lead.email || '').toLowerCase().includes(searchLower) ||
+          (lead.lead_vendor || '').toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    setFilteredLeads(filtered);
+  };
+  const getLeadStatus = (lead: LeadWithCallResult) => {
     if (!lead.call_results || lead.call_results.length === 0) return 'No Result';
     const latestResult = lead.call_results[0];
     
@@ -347,21 +413,44 @@ const Retainers = () => {
   };
 
   // Fetch agents for dropdowns
+  type AgentStatusRow = { user_id: string };
+  type AppUserRow = { user_id: string; display_name: string | null; email: string | null };
+  type AppUsersQueryClient = {
+    from: (
+      table: "app_users"
+    ) => {
+      select: (columns: string) => {
+        in: (column: "user_id", values: string[]) => Promise<{ data: AppUserRow[] | null }>;
+      };
+    };
+  };
+
   const fetchAgents = async (type: 'licensed') => {
     setFetchingAgents(true);
     try {
-      const { data: agents } = await supabase
-        .from('agents')
-        .select('id, name, email');
-      
-      const profiles = (agents || []).map((agent: any) => ({
-        user_id: agent.id,
-        display_name: agent.name || (agent.email ? String(agent.email).split('@')[0] : agent.id)
-      }));
-      
+      const { data: agentStatus } = await supabase
+        .from('agent_status')
+        .select('user_id')
+        .eq('agent_type', type);
+
+      const ids = (agentStatus as AgentStatusRow[] | null | undefined)?.map((a) => a.user_id) || [];
+      let profiles: Array<{ user_id: string; display_name: string }> = [];
+
+      if (ids.length > 0) {
+        const { data: fetchedProfiles } = await (supabase as unknown as AppUsersQueryClient)
+          .from('app_users')
+          .select('user_id, display_name, email')
+          .in('user_id', ids);
+
+        profiles = ((fetchedProfiles || []) as AppUserRow[]).map((u) => ({
+          user_id: u.user_id,
+          display_name: u.display_name || (u.email ? String(u.email).split('@')[0] : '')
+        }));
+      }
+
       setLicensedAgents(profiles);
     } catch (error) {
-      // Optionally handle error
+      console.log(error);
     } finally {
       setFetchingAgents(false);
     }
@@ -513,16 +602,17 @@ const Retainers = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="status-filter">Status</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Label htmlFor="vendor-filter">Vendor</Label>
+                <Select value={vendorFilter} onValueChange={setVendorFilter}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="All vendors" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="not-submitted">Not Submitted</SelectItem>
-                    <SelectItem value="no-result">No Result</SelectItem>
+                    {vendorOptions.map((vendor) => (
+                      <SelectItem key={vendor} value={vendor}>
+                        {vendor === 'all' ? 'All Vendors' : vendor}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

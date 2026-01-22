@@ -36,12 +36,14 @@ const getBestDisplayName = (row: { name?: string | null; display_name?: string |
 };
 
 const safeSelectAppUsers = async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const full = await supabase
     .from('app_users' as any)
     .select('user_id, name, display_name, email' as any);
 
   if (!full.error) return full;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const minimal = await supabase
     .from('app_users' as any)
     .select('user_id, display_name, email' as any);
@@ -77,20 +79,37 @@ export const fetchAgentDropdownOptions = async (): Promise<Array<{ key: string; 
 };
 
 export const fetchLicensedCloserOptions = async (): Promise<Array<{ key: string; label: string }>> => {
-  const { data: agents, error: agentsError } = await supabase
-    .from('agents')
-    .select('id, name, email');
+  const { data: statusRows, error: statusError } = await supabase
+    .from('agent_status')
+    .select('user_id')
+    .eq('agent_type', 'licensed');
 
-  if (agentsError || !agents) {
+  if (statusError || !statusRows?.length) {
     return [];
   }
 
+  const ids = statusRows.map((row: any) => row.user_id);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profiles } = await supabase
+    .from('app_users' as any)
+    .select('user_id, display_name, email' as any)
+    .in('user_id', ids);
+
+  const profileMap = new Map<string, { display_name: string | null; email: string | null }>();
+  (profiles || []).forEach((u: any) => {
+    profileMap.set(u.user_id, { display_name: u.display_name, email: u.email });
+  });
+
   const out: Array<{ key: string; label: string }> = [];
 
-  agents.forEach((agent) => {
-    const label = getBestDisplayName({ name: agent.name, email: agent.email, fallback: agent.id });
+  ids.forEach((id) => {
+    const p = profileMap.get(id);
+    const label = p
+      ? getBestDisplayName({ display_name: p.display_name, email: p.email, fallback: id })
+      : id;
     if (!label) return;
-    out.push({ key: `agents:${agent.id}`, label });
+    out.push({ key: id, label });
   });
 
   return out.sort((a, b) => a.label.localeCompare(b.label));

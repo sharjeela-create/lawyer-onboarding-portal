@@ -1,5 +1,51 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+type RequestBody = {
+  submission_id: string;
+  call_source: string;
+  buffer_agent?: string | null;
+  agent?: string | null;
+  licensed_agent_account?: string | null;
+  status?: string | null;
+  call_result?: string | null;
+  carrier?: string | null;
+  product_type?: string | null;
+  draft_date?: string | null;
+  monthly_premium?: number | null;
+  face_amount?: number | null;
+  notes?: string | null;
+  policy_number?: string | null;
+  carrier_audit?: string | null;
+  product_type_carrier?: string | null;
+  level_or_gi?: string | null;
+  from_callback?: boolean | null;
+  is_callback?: boolean | null;
+  create_new_entry?: boolean | null;
+  original_submission_id?: string | null;
+  application_submitted?: boolean | null;
+  sent_to_underwriting?: boolean | null;
+  lead_vendor?: string | null;
+  is_retention_call?: boolean | null;
+  carrier_attempted_1?: string | null;
+  carrier_attempted_2?: string | null;
+  carrier_attempted_3?: string | null;
+  accident_date?: string | null;
+  prior_attorney_involved?: boolean | null;
+  prior_attorney_details?: string | null;
+  medical_attention?: string | null;
+  police_attended?: boolean | null;
+  accident_location?: string | null;
+  accident_scenario?: string | null;
+  insured?: boolean | null;
+  injuries?: string | null;
+  vehicle_registration?: string | null;
+  insurance_company?: string | null;
+  third_party_vehicle_registration?: string | null;
+  other_party_admit_fault?: boolean | null;
+  passengers_count?: number | null;
+  assigned_attorney_id?: string | null;
+};
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
@@ -83,14 +129,14 @@ const determineFinalStatus = (applicationSubmitted, sentToUnderwriting, original
   return finalStatus;
 };
 // Function to determine call result status
-const determineCallResultStatus = (applicationSubmitted, sentToUnderwriting)=>{
-  let callResultStatus = "";
+const determineCallResultStatus = (applicationSubmitted)=>{
   if (applicationSubmitted === true) {
-    callResultStatus = sentToUnderwriting === true ? "Underwriting" : "Submitted";
-  } else {
-    callResultStatus = "Not Submitted";
+    return "Qualified";
   }
-  return callResultStatus;
+  if (applicationSubmitted === false) {
+    return "Not Qualified";
+  }
+  return "";
 };
 serve(async (req)=>{
   if (req.method === 'OPTIONS') {
@@ -98,12 +144,57 @@ serve(async (req)=>{
       headers: corsHeaders
     });
   }
-  let requestBody = {};
+  let requestBody: RequestBody | null = null;
   try {
     const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
     // Get parameters from request body
     requestBody = await req.json();
-    const { submission_id, call_source, buffer_agent, agent, licensed_agent_account, status, call_result, carrier, product_type, draft_date, monthly_premium, face_amount, notes, policy_number, carrier_audit, product_type_carrier, level_or_gi, from_callback, is_callback = false, create_new_entry = false, original_submission_id = null, application_submitted = null, sent_to_underwriting = null, lead_vendor, is_retention_call = false, carrier_attempted_1 = null, carrier_attempted_2 = null, carrier_attempted_3 = null, accident_date = null, prior_attorney_involved = null, prior_attorney_details = null, medical_attention = null, police_attended = null, accident_location = null, accident_scenario = null, insured = null, injuries = null, vehicle_registration = null, insurance_company = null, third_party_vehicle_registration = null, other_party_admit_fault = null, passengers_count = null, assigned_attorney_id = null } = requestBody;
+    const body = requestBody as RequestBody;
+    const {
+      submission_id,
+      call_source,
+      buffer_agent = null,
+      agent = null,
+      licensed_agent_account = null,
+      status = null,
+      call_result = null,
+      carrier = null,
+      product_type = null,
+      draft_date = null,
+      monthly_premium = null,
+      face_amount = null,
+      notes = null,
+      policy_number = null,
+      carrier_audit = null,
+      product_type_carrier = null,
+      level_or_gi = null,
+      from_callback = null,
+      is_callback = false,
+      create_new_entry = false,
+      original_submission_id = null,
+      application_submitted = null,
+      sent_to_underwriting = null,
+      lead_vendor = null,
+      is_retention_call = false,
+      carrier_attempted_1 = null,
+      carrier_attempted_2 = null,
+      carrier_attempted_3 = null,
+      accident_date = null,
+      prior_attorney_involved = null,
+      prior_attorney_details = null,
+      medical_attention = null,
+      police_attended = null,
+      accident_location = null,
+      accident_scenario = null,
+      insured = null,
+      injuries = null,
+      vehicle_registration = null,
+      insurance_company = null,
+      third_party_vehicle_registration = null,
+      other_party_admit_fault = null,
+      passengers_count = null,
+      assigned_attorney_id = null
+    } = body;
     // Validate required fields
     if (!submission_id) {
       throw new Error('Missing required field: submission_id');
@@ -125,7 +216,15 @@ serve(async (req)=>{
     let finalSubmissionId = submission_id;
     // Determine the final status using our mapping functions
     const finalStatus = determineFinalStatus(application_submitted, sent_to_underwriting, status);
-    const callResultStatus = determineCallResultStatus(application_submitted, sent_to_underwriting);
+    const callResultStatus = call_result || (
+      sent_to_underwriting === true
+        ? "Underwriting"
+        : application_submitted === true
+          ? "Qualified"
+          : application_submitted === false
+            ? "Not Qualified"
+            : ""
+    );
     if (call_source === 'First Time Transfer') {
       // Check existing entry and decide whether to create new or update
       const { data: existingEntry, error: existingError } = await supabase.from('daily_deal_flow').select('date').eq('submission_id', submission_id).order('created_at', {
@@ -331,19 +430,6 @@ serve(async (req)=>{
           third_party_vehicle_registration,
           other_party_admit_fault,
           passengers_count,
-          carrier,
-          product_type,
-          draft_date,
-          monthly_premium,
-          face_amount,
-          notes,
-          policy_number,
-          carrier_audit,
-          product_type_carrier,
-          level_or_gi,
-          from_callback,
-          is_callback,
-          is_retention_call,
           assigned_attorney_id,
           updated_at: getCurrentTimestampEST()
         }).eq('id', existingEntry.id).select().single();
@@ -480,7 +566,7 @@ serve(async (req)=>{
             agent,
             licensed_agent_account,
             status: finalStatus,
-            call_result,
+            call_result: callResultStatus,
             carrier,
             product_type,
             draft_date,

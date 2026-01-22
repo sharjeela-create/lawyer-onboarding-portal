@@ -62,7 +62,6 @@ const DailyDealFlowPage = () => {
   const [dateFromFilter, setDateFromFilter] = useState<Date | undefined>(undefined);
   const [dateToFilter, setDateToFilter] = useState<Date | undefined>(undefined);
   const [licensedAgentFilter, setLicensedAgentFilter] = useState(ALL_OPTION);
-  const [assignedAttorneyFilter, setAssignedAttorneyFilter] = useState(ALL_OPTION);
   const [leadVendorFilter, setLeadVendorFilter] = useState(ALL_OPTION);
   const [statusFilter, setStatusFilter] = useState(ALL_OPTION);
   const [callResultFilter, setCallResultFilter] = useState(ALL_OPTION);
@@ -152,10 +151,6 @@ const DailyDealFlowPage = () => {
         query = query.eq('licensed_agent_account', licensedAgentFilter);
       }
 
-      if (assignedAttorneyFilter && assignedAttorneyFilter !== ALL_OPTION) {
-        query = (query as any).eq('assigned_attorney_id', assignedAttorneyFilter);
-      }
-
       if (leadVendorFilter && leadVendorFilter !== ALL_OPTION) {
         query = query.eq('lead_vendor', leadVendorFilter);
       }
@@ -228,7 +223,7 @@ const DailyDealFlowPage = () => {
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when filters change
     fetchData(1);
-  }, [dateFilter, dateFromFilter, dateToFilter, licensedAgentFilter, assignedAttorneyFilter, leadVendorFilter, statusFilter, callResultFilter, retentionFilter, incompleteUpdatesFilter]);
+  }, [dateFilter, dateFromFilter, dateToFilter, licensedAgentFilter, leadVendorFilter, statusFilter, callResultFilter, retentionFilter, incompleteUpdatesFilter]);
 
   // Refetch when search term changes (debounced)
   useEffect(() => {
@@ -514,9 +509,6 @@ const DailyDealFlowPage = () => {
           onDateToFilterChange={handleDateToFilterChange}
           licensedAgentFilter={licensedAgentFilter}
           onLicensedAgentFilterChange={setLicensedAgentFilter}
-          assignedAttorneyFilter={assignedAttorneyFilter}
-          onAssignedAttorneyFilterChange={setAssignedAttorneyFilter}
-          attorneys={attorneys}
           leadVendorFilter={leadVendorFilter}
           onLeadVendorFilterChange={setLeadVendorFilter}
           statusFilter={statusFilter}

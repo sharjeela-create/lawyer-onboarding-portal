@@ -17,19 +17,32 @@ serve(async (req)=>{
     }
     // Lead vendor to Slack channel mapping
     const leadVendorChannelMapping = {
-      "Zupax Marketing": "#crash-guard-team-zupax-marketing"
+      "Zupax Marketing": "#crash-guard-team-zupax-bpo",
+      "Prime BPO":"#crash-guard-team-prime-bpo",
+      "Brainiax BPO":"#crash-guard-team-brainiax-bpo",
+      "KP Leads":"#crash-guard-team-kp-leads"
     };
+    const qualifiedTitles = [
+      "Qualified: Missing Information",
+      "Qualified: Awaiting Police Report",
+      "Qualified: Awaiting to be Signed"
+    ];
+
     const isSubmittedApplication = callResult && callResult.application_submitted === true;
+    const candidateStatus = callResult?.status || callResult?.qualified_stage || null;
+    const hasCustomStatus = !!candidateStatus;
+    const isQualifiedTitle = hasCustomStatus && qualifiedTitles.includes(candidateStatus as string);
     let slackMessage;
+    let statusDisplay: string | null = null;
+    let headerText: string | null = null;
     // Only send notifications for submitted applications
     if (isSubmittedApplication) {
       // Determine final status based on underwriting field
-      let finalStatus = callResult.status || 'Submitted';
-      if (callResult.application_submitted === true) {
-        finalStatus = callResult.sent_to_underwriting === true ? "Underwriting" : "Submitted";
-      }
-      // Add status display text
-      const statusDisplay = finalStatus === "Underwriting" ? "Sent to Underwriting" : finalStatus;
+      const finalStatus = candidateStatus || (callResult.sent_to_underwriting === true ? "Underwriting" : "Submitted");
+      statusDisplay = isQualifiedTitle
+        ? finalStatus
+        : (callResult.sent_to_underwriting === true ? "Sent to Underwriting" : finalStatus || 'Submitted');
+      headerText = `✅ ${statusDisplay}`;
       
       // Build accident information section
       const accidentBlocks = [];
@@ -114,7 +127,7 @@ serve(async (req)=>{
             type: 'header',
             text: {
               type: 'plain_text',
-              text: '✅ Application Submitted!'
+              text: headerText
             }
           },
           {
@@ -122,13 +135,8 @@ serve(async (req)=>{
             fields: [
               {
                 type: 'mrkdwn',
-                text: `*Submission ID:*\n${submissionId || 'N/A'}`
-              },
-              {
-                type: 'mrkdwn',
                 text: `*Customer:*\n${leadData.customer_full_name || 'N/A'}`
               }
-              
             ]
           },
           
@@ -199,7 +207,9 @@ serve(async (req)=>{
       console.log(`Debug - Found channel: ${vendorChannel}`);
       if (vendorChannel) {
         // Calculate status display for vendor message
-        const sentToUnderwriting = callResult.sent_to_underwriting === true ? "Yes" : "No";
+        const vendorStatusDisplay = statusDisplay
+          || (callResult.sent_to_underwriting === true ? "Sent to Underwriting" : (candidateStatus || 'Submitted'));
+        const vendorHeaderText = `✅ ${vendorStatusDisplay}`;
         
         // Build accident information section for vendor
         const vendorAccidentBlocks = [];
@@ -283,7 +293,7 @@ serve(async (req)=>{
               type: 'header',
               text: {
                 type: 'plain_text',
-                text: '✅ Application Submitted!'
+                text: vendorHeaderText
               }
             },
             {
@@ -291,11 +301,16 @@ serve(async (req)=>{
               fields: [
                 {
                   type: 'mrkdwn',
-                  text: `*Submission ID:*\n${submissionId || 'N/A'}`
-                },
+                  text: `*Customer:*\n${leadData.customer_full_name || 'N/A'}`
+                }
+              ]
+            },
+            {
+              type: 'section',
+              fields: [
                 {
                   type: 'mrkdwn',
-                  text: `*Customer:*\n${leadData.customer_full_name || 'N/A'}`
+                  text: `*Status:*\n${vendorStatusDisplay}`
                 }
               ]
             },
