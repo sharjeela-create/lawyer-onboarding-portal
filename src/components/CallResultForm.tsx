@@ -417,6 +417,9 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
   const [priorAttorneyDetails, setPriorAttorneyDetails] = useState("");
   const [medicalAttention, setMedicalAttention] = useState("");
   const [policeAttended, setPoliceAttended] = useState<boolean | null>(null);
+  const [medicalTreatmentProof, setMedicalTreatmentProof] = useState<string>("");
+  const [insuranceDocuments, setInsuranceDocuments] = useState<string>("");
+  const [policeReport, setPoliceReport] = useState<string>("");
   const [accidentLocation, setAccidentLocation] = useState("");
   const [accidentScenario, setAccidentScenario] = useState("");
   const [insured, setInsured] = useState<boolean | null>(null);
@@ -469,6 +472,15 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
           break;
         case 'police_attended':
           setPoliceAttended(null);
+          break;
+        case 'medical_treatment_proof':
+          setMedicalTreatmentProof('');
+          break;
+        case 'insurance_documents':
+          setInsuranceDocuments('');
+          break;
+        case 'police_report':
+          setPoliceReport('');
           break;
         case 'insured':
           setInsured(null);
@@ -538,6 +550,15 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
             if (b !== null) setPoliceAttended(b);
           }
           break;
+        case 'medical_treatment_proof':
+          if (!medicalTreatmentProof) setMedicalTreatmentProof(String(value).toLowerCase());
+          break;
+        case 'insurance_documents':
+          if (!insuranceDocuments) setInsuranceDocuments(String(value).toLowerCase());
+          break;
+        case 'police_report':
+          if (!policeReport) setPoliceReport(String(value).toLowerCase());
+          break;
         case 'insured':
           if (insured === null) {
             const b = normalizeBoolean(value);
@@ -588,6 +609,9 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
     injuries,
     medicalAttention,
     policeAttended,
+    medicalTreatmentProof,
+    insuranceDocuments,
+    policeReport,
     insured,
     vehicleRegistration,
     insuranceCompany,
@@ -1308,7 +1332,10 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                 insurance_company: insuranceCompany || null,
                 third_party_vehicle_registration: thirdPartyVehicleRegistration || null,
                 other_party_admit_fault: otherPartyAdmitFault,
-                passengers_count: passengersCount ? parseInt(passengersCount) : null
+                passengers_count: passengersCount ? parseInt(passengersCount) : null,
+                medical_treatment_proof: medicalTreatmentProof ? medicalTreatmentProof : null,
+                insurance_documents: insuranceDocuments ? insuranceDocuments : null,
+                police_report: policeReport ? policeReport : null,
               }
             });
 
@@ -1836,6 +1863,72 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                         type="button"
                         variant={policeAttended === false ? "default" : "outline"}
                         onClick={() => setPoliceAttended(false)}
+                        className="flex-1"
+                      >
+                        No
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Medical Treatment Proof</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={medicalTreatmentProof === 'true' ? "default" : "outline"}
+                        onClick={() => setMedicalTreatmentProof('true')}
+                        className="flex-1"
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={medicalTreatmentProof === 'false' ? "default" : "outline"}
+                        onClick={() => setMedicalTreatmentProof('false')}
+                        className="flex-1"
+                      >
+                        No
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Insurance Documents</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={insuranceDocuments === 'true' ? "default" : "outline"}
+                        onClick={() => setInsuranceDocuments('true')}
+                        className="flex-1"
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={insuranceDocuments === 'false' ? "default" : "outline"}
+                        onClick={() => setInsuranceDocuments('false')}
+                        className="flex-1"
+                      >
+                        No
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Police Report</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={policeReport === 'true' ? "default" : "outline"}
+                        onClick={() => setPoliceReport('true')}
+                        className="flex-1"
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={policeReport === 'false' ? "default" : "outline"}
+                        onClick={() => setPoliceReport('false')}
                         className="flex-1"
                       >
                         No

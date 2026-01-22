@@ -45,6 +45,9 @@ type RequestBody = {
   other_party_admit_fault?: boolean | null;
   passengers_count?: number | null;
   assigned_attorney_id?: string | null;
+  medical_treatment_proof?: string | null;
+  insurance_documents?: string | null;
+  police_report?: string | null;
 };
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -193,6 +196,9 @@ serve(async (req)=>{
       third_party_vehicle_registration = null,
       other_party_admit_fault = null,
       passengers_count = null,
+      medical_treatment_proof = null,
+      insurance_documents = null,
+      police_report = null,
       assigned_attorney_id = null
     } = body;
     // Validate required fields
@@ -267,7 +273,10 @@ serve(async (req)=>{
           from_callback,
           is_callback,
           is_retention_call,
-          assigned_attorney_id
+          assigned_attorney_id,
+          medical_treatment_proof,
+          insurance_documents,
+          police_report
         }).select().single();
         if (error) {
           console.error('Error inserting new daily deal flow entry:', error);
@@ -322,6 +331,9 @@ serve(async (req)=>{
             is_callback,
             is_retention_call,
             assigned_attorney_id,
+            medical_treatment_proof,
+            insurance_documents,
+            police_report,
             updated_at: getCurrentTimestampEST()
           }).eq('id', mostRecentEntry.id).select().single();
           if (error) {
@@ -373,7 +385,10 @@ serve(async (req)=>{
             third_party_vehicle_registration,
             other_party_admit_fault,
             passengers_count,
-            assigned_attorney_id
+            assigned_attorney_id,
+            medical_treatment_proof,
+            insurance_documents,
+            police_report
           }).select().single();
           if (error) {
             console.error('Error inserting new daily deal flow entry:', error);
@@ -431,6 +446,9 @@ serve(async (req)=>{
           other_party_admit_fault,
           passengers_count,
           assigned_attorney_id,
+          medical_treatment_proof,
+          insurance_documents,
+          police_report,
           updated_at: getCurrentTimestampEST()
         }).eq('id', existingEntry.id).select().single();
         if (error) {
@@ -482,7 +500,10 @@ serve(async (req)=>{
           third_party_vehicle_registration,
           other_party_admit_fault,
           passengers_count,
-          assigned_attorney_id
+          assigned_attorney_id,
+          medical_treatment_proof,
+          insurance_documents,
+          police_report
         }).select().single();
         if (error) {
           console.error('Error inserting new daily deal flow entry:', error);

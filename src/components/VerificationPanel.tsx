@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Copy, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 import { logCallUpdate, getLeadInfo } from "@/lib/callLogging";
 // Custom field order for display - matches actual leads table fields
 const customFieldOrder = [
@@ -46,7 +47,10 @@ const customFieldOrder = [
   "contact_address",
   
   // Additional Notes
-  "additional_notes"
+  "additional_notes",
+  "medical_treatment_proof",
+  "insurance_documents",
+  "police_report"
 ];
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ColoredProgress } from "@/components/ui/colored-progress";
@@ -142,6 +146,11 @@ export const VerificationPanel = ({ sessionId, onTransferReady, onFieldVerified 
   const [elapsedTime, setElapsedTime] = useState("00:00");
   const [notes, setNotes] = useState("");
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const [customItems, setCustomItems] = useState<Record<string, VerificationItem | null>>({
+    medical_treatment_proof: null,
+    insurance_documents: null,
+    police_report: null,
+  });
   
   const {
     session,
@@ -174,15 +183,92 @@ export const VerificationPanel = ({ sessionId, onTransferReady, onFieldVerified 
   // Initialize input values when verification items change
   useEffect(() => {
     if (verificationItems) {
-      const newInputValues: Record<string, string> = {};
-      verificationItems.forEach(item => {
-        if (!(item.id in inputValues)) {
-          newInputValues[item.id] = item.verified_value || item.original_value || '';
-        }
+      setInputValues((prev) => {
+        const next = { ...prev };
+        verificationItems.forEach((item) => {
+          if (!(item.id in next)) {
+            next[item.id] = item.verified_value || item.original_value || '';
+          }
+        });
+        return next;
       });
-      setInputValues(prev => ({ ...prev, ...newInputValues }));
+
+      const nextCustomItems: Record<string, VerificationItem | null> = {
+        medical_treatment_proof: null,
+        insurance_documents: null,
+        police_report: null,
+      };
+
+      verificationItems.forEach((item) => {
+        if (item.field_name === 'medical_treatment_proof') nextCustomItems.medical_treatment_proof = item;
+        if (item.field_name === 'insurance_documents') nextCustomItems.insurance_documents = item;
+        if (item.field_name === 'police_report') nextCustomItems.police_report = item;
+      });
+
+      setCustomItems(nextCustomItems);
     }
   }, [verificationItems]);
+
+  const upsertCustomVerificationItem = async (fieldName: 'medical_treatment_proof' | 'insurance_documents' | 'police_report', updates: { verified_value?: string; is_verified?: boolean }) => {
+    const existing = customItems[fieldName];
+
+    if (existing?.id) {
+      const nextUpdates: Partial<VerificationItem> = {};
+      if (typeof updates.verified_value !== 'undefined') {
+        nextUpdates.verified_value = updates.verified_value;
+        nextUpdates.is_modified = existing.original_value !== updates.verified_value;
+      }
+      if (typeof updates.is_verified !== 'undefined') {
+        nextUpdates.is_verified = updates.is_verified;
+        nextUpdates.verified_at = updates.is_verified ? new Date().toISOString() : null;
+      }
+
+      const { data } = await supabase
+        .from('verification_items')
+        .update({
+          ...nextUpdates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (data) {
+        setCustomItems((prev) => ({ ...prev, [fieldName]: data as VerificationItem }));
+        setInputValues((prev) => ({
+          ...prev,
+          [String((data as VerificationItem).id)]: (data as VerificationItem).verified_value || '',
+        }));
+      }
+
+      return;
+    }
+
+    const insertPayload: Database['public']['Tables']['verification_items']['Insert'] = {
+      session_id: sessionId,
+      field_name: fieldName,
+      field_category: 'additional',
+      original_value: '',
+      verified_value: typeof updates.verified_value !== 'undefined' ? updates.verified_value : '',
+      is_verified: Boolean(updates.is_verified),
+      is_modified: true,
+      verified_at: updates.is_verified ? new Date().toISOString() : null,
+    };
+
+    const { data } = await supabase
+      .from('verification_items')
+      .upsert(insertPayload, { onConflict: 'session_id,field_name' })
+      .select()
+      .single();
+
+    if (data) {
+      setCustomItems((prev) => ({ ...prev, [fieldName]: data as VerificationItem }));
+      setInputValues((prev) => ({
+        ...prev,
+        [String((data as VerificationItem).id)]: (data as VerificationItem).verified_value || '',
+      }));
+    }
+  };
 
   // Add early returns for loading and error states AFTER all hooks
   if (loading) {
@@ -327,7 +413,10 @@ export const VerificationPanel = ({ sessionId, onTransferReady, onFieldVerified 
       'police_attended',
       'insured',
       'other_party_admit_fault',
-      'prior_attorney_involved'
+      'prior_attorney_involved',
+      'medical_treatment_proof',
+      'insurance_documents',
+      'police_report'
     ];
     
     // Long text fields
@@ -461,7 +550,9 @@ export const VerificationPanel = ({ sessionId, onTransferReady, onFieldVerified 
       </CardHeader>
 
       <CardContent className="space-y-4 flex-1 min-h-0 overflow-y-auto">
-        {sortedItems.map((item) => (
+        {sortedItems
+          .filter((item) => !['medical_treatment_proof', 'insurance_documents', 'police_report'].includes(item.field_name))
+          .map((item) => (
           <div key={item.id} className="space-y-2">
             <div className="flex items-center gap-2">
               {getFieldIcon(item)}
@@ -480,6 +571,80 @@ export const VerificationPanel = ({ sessionId, onTransferReady, onFieldVerified 
             <Separator className="mt-4" />
           </div>
         ))}
+
+        {([
+          { key: 'medical_treatment_proof', label: 'Medical Treatment Proof' },
+          { key: 'insurance_documents', label: 'Insurance Documents' },
+          { key: 'police_report', label: 'Police Report' },
+        ] as const).map(({ key, label }) => {
+          const item = customItems[key];
+          const value = item?.id ? (inputValues[item.id] || '') : (item?.verified_value || item?.original_value || '');
+          const checked = Boolean(item?.is_verified);
+          const renderYesNo = () => (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (item?.id) {
+                    handleFieldValueChange(item.id, 'true');
+                  } else {
+                    await upsertCustomVerificationItem(key, { verified_value: 'true' });
+                  }
+                }}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                  value === 'true'
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-200 hover:border-green-300 bg-white'
+                }`}
+              >
+                <Check className={`h-5 w-5 ${value === 'true' ? 'text-green-600' : 'text-gray-400'}`} />
+                <span className="font-medium">Yes</span>
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (item?.id) {
+                    handleFieldValueChange(item.id, 'false');
+                  } else {
+                    await upsertCustomVerificationItem(key, { verified_value: 'false' });
+                  }
+                }}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                  value === 'false'
+                    ? 'border-red-500 bg-red-50 text-red-700'
+                    : 'border-gray-200 hover:border-red-300 bg-white'
+                }`}
+              >
+                <X className={`h-5 w-5 ${value === 'false' ? 'text-red-600' : 'text-gray-400'}`} />
+                <span className="font-medium">No</span>
+              </button>
+            </div>
+          );
+
+          return (
+            <div key={key} className="space-y-2">
+              <div className="flex items-center gap-2">
+                {item ? getFieldIcon(item) : <XCircle className="h-4 w-4 text-gray-400" />}
+                <Label className="text-xs font-medium">{label}</Label>
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={async (nextChecked) => {
+                    const boolChecked = Boolean(nextChecked);
+                    if (item?.id) {
+                      handleCheckboxChange(item.id, boolChecked);
+                    } else {
+                      await upsertCustomVerificationItem(key, { is_verified: boolChecked, verified_value: value || '' });
+                      if (onFieldVerified) onFieldVerified(key, value || '', boolChecked);
+                    }
+                  }}
+                  className="ml-auto"
+                />
+              </div>
+              {renderYesNo()}
+              <Separator className="mt-4" />
+            </div>
+          );
+        })}
 
         {/* Notes Section */}
         <div className="space-y-2">
