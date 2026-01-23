@@ -118,13 +118,9 @@ const allStageOptions = [
 ] as const;
 
 const deriveStageKey = (row: TransferPortalRow): StageKey => {
-  const source = (row.status || row.call_result || "transfer_api").toLowerCase();
-  const slug = source
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/_{2,}/g, "_")
-    .replace(/^_|_$/g, "");
-
-  return stageSlugMap[slug] ?? "transfer_api";
+  const status = (row.status || '').trim();
+  const exact = kanbanStages.find((s) => s.label === status);
+  return exact?.key ?? 'transfer_api';
 };
 
 const TransferPortalPage = () => {
@@ -136,6 +132,7 @@ const TransferPortalPage = () => {
   const [allTimeTransfers, setAllTimeTransfers] = useState(0);
   const [dateFilter, setDateFilter] = useState<string>("");
   const [sourceTypeFilter, setSourceTypeFilter] = useState("__ALL__");
+  const [leadVendorFilter, setLeadVendorFilter] = useState("__ALL__");
   const [showDuplicates, setShowDuplicates] = useState(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -184,6 +181,11 @@ const TransferPortalPage = () => {
       filtered = filtered.filter(record => record.source_type === sourceTypeFilter);
     }
 
+    // Apply lead vendor filter
+    if (leadVendorFilter !== "__ALL__") {
+      filtered = filtered.filter((record) => (record.lead_vendor || '') === leadVendorFilter);
+    }
+
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -206,6 +208,15 @@ const TransferPortalPage = () => {
 
     return filtered;
   };
+
+  const leadVendorOptions = useMemo(() => {
+    const set = new Set<string>();
+    (data || []).forEach((r) => {
+      const v = (r.lead_vendor || '').trim();
+      if (v) set.add(v);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data]);
 
   const { toast } = useToast();
 
@@ -251,11 +262,17 @@ const TransferPortalPage = () => {
         };
       });
 
-      setData(transferRows);
+      const submissionStatuses = new Set<string>(['Pending Approval', ...submissionPortalStages]);
+      const transferPortalOnlyRows = transferRows.filter((row) => {
+        const status = (row.status || '').trim();
+        return !submissionStatuses.has(status);
+      });
+
+      setData(transferPortalOnlyRows);
 
       const rowsForCounts = sourceTypeFilter === "__ALL__"
-        ? transferRows
-        : transferRows.filter((row) => row.source_type === sourceTypeFilter);
+        ? transferPortalOnlyRows
+        : transferPortalOnlyRows.filter((row) => row.source_type === sourceTypeFilter);
 
       setData(rowsForCounts);
 
@@ -285,7 +302,7 @@ const TransferPortalPage = () => {
   useEffect(() => {
     setFilteredData(applyFilters(data));
     setCurrentPage(1); // Reset to first page when filters change
-  }, [data, dateFilter, sourceTypeFilter, showDuplicates, searchTerm]);
+  }, [data, dateFilter, sourceTypeFilter, leadVendorFilter, showDuplicates, searchTerm]);
 
   // Pagination calculations
   const stageFilteredData = useMemo(() => {
@@ -311,7 +328,7 @@ const TransferPortalPage = () => {
   const handleOpenEdit = (row: TransferPortalRow) => {
     setEditRow(row);
     setEditStage((row.status || '').trim() || kanbanStages[0].label);
-    setEditNotes(row.notes || '');
+    setEditNotes('');
     setEditStageOpen(false);
     setEditOpen(true);
   };
@@ -366,7 +383,26 @@ const TransferPortalPage = () => {
             const user = userData?.user;
             const createdBy = user?.id || null; // created_by is uuid
             const emailPrefix = user?.email ? user.email.split('@')[0] : null;
-            const authorName = (user?.user_metadata as any)?.full_name || emailPrefix || user?.id || null;
+
+            let displayName: string | null = null;
+            if (user?.id) {
+              try {
+                const { data: profileData } = await (supabase as any)
+                  .from('profiles')
+                  .select('display_name')
+                  .eq('user_id', user.id)
+                  .limit(1);
+
+                const raw = Array.isArray(profileData) ? profileData?.[0]?.display_name : profileData?.display_name;
+                displayName = typeof raw === 'string' ? raw.trim() : null;
+                if (displayName && displayName.length === 0) displayName = null;
+              } catch (e) {
+                console.warn('Failed to fetch profile display_name', e);
+              }
+            }
+
+            const authorName =
+              displayName || (user?.user_metadata as any)?.full_name || emailPrefix || user?.id || null;
 
             const { error: insertErr } = await supabase.from('lead_notes').insert({
               lead_id: editRow.id,
@@ -672,19 +708,36 @@ const TransferPortalPage = () => {
             </Card>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="overflow-x-auto">
+            <div className="flex flex-nowrap items-center justify-between gap-3 min-w-[980px]">
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search transfers..."
-                className="w-64"
+                className="w-56"
               />
+
+              <Select value={leadVendorFilter} onValueChange={(value) => setLeadVendorFilter(value)}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="All Vendors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="__ALL__">All Vendors</SelectItem>
+                    {leadVendorOptions.map((vendor) => (
+                      <SelectItem key={vendor} value={vendor}>
+                        {vendor}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
               <Select value={selectedStage} onValueChange={(value) => {
                 setSelectedStage(value as "all" | StageKey);
                 setCurrentPage(1);
               }}>
-                <SelectTrigger className="w-64">
+                <SelectTrigger className="w-44">
                   <SelectValue placeholder="All Stages" />
                 </SelectTrigger>
                 <SelectContent>
@@ -698,14 +751,12 @@ const TransferPortalPage = () => {
                   </SelectGroup>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="inline-flex rounded-lg border border-muted bg-background p-0.5">
+              <div className="inline-flex rounded-lg border border-muted bg-background p-0.5 shrink-0">
                 {["kanban", "list"].map((mode) => (
                   <button
                     key={mode}
                     type="button"
-                    className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
                       viewMode === mode
                         ? "bg-primary text-white shadow"
                         : "text-muted-foreground hover:bg-muted"
@@ -716,13 +767,13 @@ const TransferPortalPage = () => {
                   </button>
                 ))}
               </div>
-              <Badge variant="secondary" className="px-3 py-1">
+              <Badge variant="secondary" className="px-2.5 py-1 shrink-0">
                 {allTimeTransfers} transfers
               </Badge>
-              <Button variant="outline" onClick={handleExport}>
+              <Button variant="outline" size="sm" onClick={handleExport}>
                 Export CSV
               </Button>
-              <Button onClick={handleRefresh} disabled={refreshing}>
+              <Button size="sm" onClick={handleRefresh} disabled={refreshing}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
                 Refresh
               </Button>

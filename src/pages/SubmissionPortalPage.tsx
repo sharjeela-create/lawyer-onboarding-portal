@@ -68,18 +68,11 @@ const stageSlugMap: Record<string, StageKey> = {
 };
 
 const deriveStageKey = (row: SubmissionPortalRow): StageKey => {
-  const status = (row.status || "").trim();
-  if (!status || status === "Pending Approval") return "stage_1";
+  const status = (row.status || '').trim();
+  if (!status || status === 'Pending Approval') return 'stage_1';
 
-  const slug = status
-    .toLowerCase()
-    .replace(/\(email\)/g, "email")
-    .replace(/\(postal mail\)/g, "postal mail")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/_{2,}/g, "_")
-    .replace(/^_|_$/g, "");
-
-  return stageSlugMap[slug] ?? "stage_1";
+  const exact = kanbanStages.find((s) => s.label === status);
+  return exact?.key ?? 'stage_1';
 };
 
 const getStatusForStage = (stageKey: StageKey) => {
@@ -193,6 +186,7 @@ const SubmissionPortalPage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState("__ALL__");
+  const [leadVendorFilter, setLeadVendorFilter] = useState("__ALL__");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showDuplicates, setShowDuplicates] = useState(true);
   const [dataCompletenessFilter, setDataCompletenessFilter] = useState("__ALL__");
@@ -252,6 +246,11 @@ const SubmissionPortalPage = () => {
       filtered = filtered.filter(record => record.status === statusFilter);
     }
 
+    // Apply lead vendor filter
+    if (leadVendorFilter !== "__ALL__") {
+      filtered = filtered.filter((record) => (record.lead_vendor || '') === leadVendorFilter);
+    }
+
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -286,6 +285,15 @@ const SubmissionPortalPage = () => {
 
     return filtered;
   };
+
+  const leadVendorOptions = useMemo(() => {
+    const set = new Set<string>();
+    (data || []).forEach((r) => {
+      const v = (r.lead_vendor || '').trim();
+      if (v) set.add(v);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data]);
 
   // Function to generate verification log summary showing complete call workflow
   const generateVerificationLogSummary = (logs: CallLog[], submission?: any): string => {
@@ -596,7 +604,7 @@ const SubmissionPortalPage = () => {
   // Update filtered data whenever data or filters change
   useEffect(() => {
     setFilteredData(applyFilters(data));
-  }, [data, dateFilter, statusFilter, showDuplicates, searchTerm, dataCompletenessFilter]);
+  }, [data, dateFilter, statusFilter, leadVendorFilter, showDuplicates, searchTerm, dataCompletenessFilter]);
 
   useEffect(() => {
     fetchData();
@@ -624,44 +632,45 @@ const SubmissionPortalPage = () => {
       counts[id] = 0;
     });
 
-    // lead_notes by lead_id
+    // lead_notes (deduped)
+    const submissionIds = Array.from(submissionMap.keys());
     try {
-      const { data: leadNoteRows, error: leadNoteErr } = await (supabase as any)
+      let query = (supabase as any)
         .from('lead_notes')
-        .select('lead_id')
-        .in('lead_id', leadIds);
+        .select('id, lead_id, submission_id');
 
-      if (!leadNoteErr && Array.isArray(leadNoteRows)) {
-        leadNoteRows.forEach((row: { lead_id: string }) => {
-          if (row.lead_id) {
-            counts[row.lead_id] = (counts[row.lead_id] || 0) + 1;
+      if (leadIds.length > 0) {
+        query = query.in('lead_id', leadIds);
+      }
+      if (submissionIds.length > 0) {
+        query = query.in('submission_id', submissionIds);
+      }
+
+      const { data: noteRows, error: notesErr } = await query;
+
+      if (!notesErr && Array.isArray(noteRows)) {
+        const seen = new Set<string>();
+        noteRows.forEach((row: { id: string; lead_id?: string | null; submission_id?: string | null }) => {
+          if (!row?.id || seen.has(row.id)) return;
+          seen.add(row.id);
+
+          const directLeadId = (row.lead_id || '').toString();
+          if (directLeadId && counts[directLeadId] !== undefined) {
+            counts[directLeadId] = (counts[directLeadId] || 0) + 1;
+            return;
+          }
+
+          const subId = (row.submission_id || '').toString();
+          if (subId) {
+            const leadId = submissionMap.get(subId);
+            if (leadId) {
+              counts[leadId] = (counts[leadId] || 0) + 1;
+            }
           }
         });
       }
     } catch (e) {
       console.warn('Failed to fetch lead note counts', e);
-    }
-
-    // lead_notes by submission_id
-    const submissionIds = Array.from(submissionMap.keys());
-    if (submissionIds.length > 0) {
-      try {
-        const { data: subNoteRows, error: subNoteErr } = await (supabase as any)
-          .from('lead_notes')
-          .select('submission_id')
-          .in('submission_id', submissionIds);
-
-        if (!subNoteErr && Array.isArray(subNoteRows)) {
-          subNoteRows.forEach((row: { submission_id: string }) => {
-            const leadId = submissionMap.get(row.submission_id);
-            if (leadId) {
-              counts[leadId] = (counts[leadId] || 0) + 1;
-            }
-          });
-        }
-      } catch (e) {
-        console.warn('Failed to fetch submission note counts', e);
-      }
     }
 
     // Legacy daily_deal_flow notes
@@ -792,7 +801,7 @@ const SubmissionPortalPage = () => {
   const handleOpenEdit = (row: SubmissionPortalRow) => {
     setEditRow(row);
     setEditStage((row.status || '').trim());
-    setEditNotes((row.notes || '').trim());
+    setEditNotes('');
     setEditStageOpen(false);
     setEditOpen(true);
   };
@@ -816,6 +825,55 @@ const SubmissionPortalPage = () => {
       if (flowError) throw flowError;
 
       const notesText = (editNotes || '').trim() || 'No notes provided.';
+
+      const trimmedNote = (editNotes || '').trim();
+      if (trimmedNote.length > 0) {
+        try {
+          const { data: userData, error: userErr } = await supabase.auth.getUser();
+          if (!userErr) {
+            const user = userData?.user;
+            const createdBy = user?.id || null;
+            const emailPrefix = user?.email ? user.email.split('@')[0] : null;
+
+            let displayName: string | null = null;
+            if (user?.id) {
+              try {
+                const { data: profileData } = await (supabase as any)
+                  .from('profiles')
+                  .select('display_name')
+                  .eq('user_id', user.id)
+                  .limit(1);
+
+                const raw = Array.isArray(profileData) ? profileData?.[0]?.display_name : profileData?.display_name;
+                displayName = typeof raw === 'string' ? raw.trim() : null;
+                if (displayName && displayName.length === 0) displayName = null;
+              } catch (e) {
+                console.warn('Failed to fetch profile display_name', e);
+              }
+            }
+
+            const authorName =
+              displayName || (user?.user_metadata as any)?.full_name || emailPrefix || user?.id || null;
+
+            const { error: insertErr } = await (supabase as any).from('lead_notes').insert({
+              lead_id: editRow.id,
+              submission_id: editRow.submission_id ?? null,
+              note: trimmedNote,
+              source: 'Submission Portal',
+              created_by: createdBy,
+              author_name: authorName,
+            });
+
+            if (insertErr) {
+              console.warn('Failed to insert lead note', insertErr);
+            }
+          } else {
+            console.warn('Failed to fetch auth user for note insert', userErr);
+          }
+        } catch (e) {
+          console.warn('Unexpected error inserting lead note', e);
+        }
+      }
       if (stageChanged) {
         try {
           const { error: slackError } = await supabase.functions.invoke('disposition-change-slack-alert', {
@@ -871,6 +929,22 @@ const SubmissionPortalPage = () => {
                 placeholder="Search by name, phone, vendor..."
                 className="max-w-md"
               />
+
+              <Select value={leadVendorFilter} onValueChange={(v) => setLeadVendorFilter(v)}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="All Vendors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="__ALL__">All Vendors</SelectItem>
+                    {leadVendorOptions.map((vendor) => (
+                      <SelectItem key={vendor} value={vendor}>
+                        {vendor}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
 
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v)}>
                 <SelectTrigger className="w-48">

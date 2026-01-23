@@ -436,15 +436,14 @@ const DailyDealFlowLeadDetailsPage = () => {
           </CardContent>
         </Card>
       ) : (
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="notes" className="w-full">
           <div className="overflow-x-auto">
             <TabsList className="justify-start">
+              <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="agents">Closers</TabsTrigger>
-              <TabsTrigger value="policy">Policy</TabsTrigger>
               <TabsTrigger value="accident">Accident</TabsTrigger>
               <TabsTrigger value="integrations">Integrations</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
           </div>
 
@@ -611,103 +610,6 @@ const DailyDealFlowLeadDetailsPage = () => {
                         })}
                       </SelectContent>
                     </Select>
-                  </Field>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="policy">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Carrier">
-                    <Input
-                      className={inputCls}
-                      value={form.carrier ?? ""}
-                      onChange={(e) => setString("carrier", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Product Type">
-                    <Input
-                      className={inputCls}
-                      value={form.product_type ?? ""}
-                      onChange={(e) => setString("product_type", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Product Type Carrier">
-                    <Input
-                      className={inputCls}
-                      value={form.product_type_carrier ?? ""}
-                      onChange={(e) => setString("product_type_carrier", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Level or GI">
-                    <Input
-                      className={inputCls}
-                      value={form.level_or_gi ?? ""}
-                      onChange={(e) => setString("level_or_gi", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Draft Date">
-                    <Input
-                      type="date"
-                      className={inputCls}
-                      value={form.draft_date ?? ""}
-                      onChange={(e) => setString("draft_date", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Monthly Premium">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      className={inputCls}
-                      value={form.monthly_premium ?? ""}
-                      onChange={(e) => setNumber("monthly_premium", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Face Amount">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      className={inputCls}
-                      value={form.face_amount ?? ""}
-                      onChange={(e) => setNumber("face_amount", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Policy Number">
-                    <Input
-                      className={inputCls}
-                      value={form.policy_number ?? ""}
-                      onChange={(e) => setString("policy_number", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Placement Status">
-                    <Input
-                      className={inputCls}
-                      value={form.placement_status ?? ""}
-                      onChange={(e) => setString("placement_status", e.target.value)}
-                      disabled={disabled}
-                    />
-                  </Field>
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Carrier Audit">
-                    <Textarea
-                      value={form.carrier_audit ?? ""}
-                      onChange={(e) => setString("carrier_audit", e.target.value)}
-                      disabled={disabled}
-                      className="min-h-[120px]"
-                    />
                   </Field>
                 </div>
               </CardContent>
