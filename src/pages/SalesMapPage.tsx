@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { US_STATES } from '@/lib/us-states';
 
-type CompetitionStatus = 'light' | 'moderate' | 'heavy';
+type CompetitionStatus = 'none' | 'light' | 'moderate' | 'heavy';
 
 type StateSales = {
   code: string;
@@ -36,21 +36,24 @@ type OrderRow = {
 const MAP_PATH_SELECTOR = 'path[data-id], path[id]';
 
 const toCompetitionStatus = (sales: number): CompetitionStatus => {
-  if (sales < 10) return 'light';
-  if (sales <= 20) return 'moderate';
+  if (sales <= 0) return 'none';
+  if (sales <= 5) return 'light';
+  if (sales <= 10) return 'moderate';
   return 'heavy';
 };
 
 const getStatusColor = (status: CompetitionStatus) => {
+  if (status === 'none') return '#e5e7eb';
   if (status === 'light') return '#22c55e';
   if (status === 'moderate') return '#eab308';
   return '#ef4444';
 };
 
 const getStatusLabel = (status: CompetitionStatus) => {
-  if (status === 'light') return 'Low Sales';
-  if (status === 'moderate') return 'Moderate Sales';
-  return 'High Sales';
+  if (status === 'none') return 'No orders';
+  if (status === 'light') return 'Low (1–5)';
+  if (status === 'moderate') return 'Moderate (6–10)';
+  return 'High (11+)';
 };
 
 const SalesMapPage = () => {
@@ -169,69 +172,6 @@ const SalesMapPage = () => {
     svg.appendChild(g);
   }, []);
 
-  const applyStateCounts = useCallback(() => {
-    const root = mapRootRef.current;
-    if (!root) return;
-    const svg = root.querySelector('svg') as SVGSVGElement | null;
-    if (!svg) return;
-
-    const old = svg.querySelector('#state-counts');
-    if (old) old.remove();
-
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('id', 'state-counts');
-    g.setAttribute('pointer-events', 'none');
-
-    const paths = svg.querySelectorAll(MAP_PATH_SELECTOR);
-    paths.forEach((p) => {
-      const code = p.getAttribute('data-id') || p.getAttribute('id');
-      if (!code) return;
-
-      const state = stateByCodeRef.current.get(code);
-      if (!state) return;
-      if (!Number.isFinite(state.sales) || state.sales <= 0) return;
-
-      let bbox: DOMRect;
-      try {
-        bbox = (p as unknown as SVGGraphicsElement).getBBox();
-      } catch {
-        return;
-      }
-
-      // Place badge inside the state (upper-right-ish quadrant, but still inside bbox).
-      const minDim = Math.max(1, Math.min(bbox.width, bbox.height));
-      const r = Math.max(7, Math.min(14, minDim / 3));
-
-      const cx = bbox.x + bbox.width * 0.72;
-      const cy = bbox.y + bbox.height * 0.30;
-
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.textContent = String(state.sales);
-      text.setAttribute('x', String(cx));
-      text.setAttribute('y', String(cy));
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('dominant-baseline', 'middle');
-
-      const fontSize = Math.max(8, Math.min(13, r * 1.05));
-      text.style.setProperty('font-size', `${fontSize}px`, 'important');
-      text.style.setProperty('font-weight', '800', 'important');
-      text.style.setProperty(
-        'font-family',
-        'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
-        'important'
-      );
-      text.style.setProperty('fill', '#ffffff', 'important');
-      text.style.setProperty('paint-order', 'stroke', 'important');
-      text.style.setProperty('stroke', 'rgba(0,0,0,0.55)', 'important');
-      text.style.setProperty('stroke-width', '3', 'important');
-      text.style.setProperty('stroke-linejoin', 'round', 'important');
-
-      g.appendChild(text);
-    });
-
-    svg.appendChild(g);
-  }, []);
-
   const applyMapColors = useCallback(() => {
     const root = mapRootRef.current;
     if (!root) return;
@@ -262,8 +202,7 @@ const SalesMapPage = () => {
     });
 
     applyStateLabels();
-    applyStateCounts();
-  }, [applyStateCounts, applyStateLabels]);
+  }, [applyStateLabels]);
 
   const refreshCounts = useCallback(async () => {
     setLoading(true);
@@ -327,7 +266,7 @@ const SalesMapPage = () => {
           code: s.code,
           name: s.name,
           sales: 0,
-          status: 'light',
+          status: 'none',
         }))
       );
     } finally {
@@ -447,19 +386,38 @@ const SalesMapPage = () => {
 
         <Card className="sm:col-span-2">
           <CardContent className="p-4">
-            <div className="text-sm font-medium">Legend</div>
-            <div className="mt-3 flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: '#22c55e' }} />
-                <span className="text-sm">Low (&lt; 10)</span>
+            <div className="flex flex-col gap-1">
+              <div className="text-sm font-medium">Legend</div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="flex items-start gap-2">
+                <div className="mt-0.5 h-4 w-4 rounded-full" style={{ backgroundColor: '#e5e7eb' }} />
+                <div className="leading-tight">
+                  <div className="text-sm font-medium">No orders</div>
+                  <div className="text-xs text-muted-foreground">0 submitted orders</div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: '#eab308' }} />
-                <span className="text-sm">Moderate (10–20)</span>
+              <div className="flex items-start gap-2">
+                <div className="mt-0.5 h-4 w-4 rounded-full" style={{ backgroundColor: '#22c55e' }} />
+                <div className="leading-tight">
+                  <div className="text-sm font-medium">Low volume</div>
+                  <div className="text-xs text-muted-foreground">1–5 submitted orders</div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: '#ef4444' }} />
-                <span className="text-sm">High (&gt; 20)</span>
+              <div className="flex items-start gap-2">
+                <div className="mt-0.5 h-4 w-4 rounded-full" style={{ backgroundColor: '#eab308' }} />
+                <div className="leading-tight">
+                  <div className="text-sm font-medium">Moderate volume</div>
+                  <div className="text-xs text-muted-foreground">6–10 submitted orders</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="mt-0.5 h-4 w-4 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+                <div className="leading-tight">
+                  <div className="text-sm font-medium">High volume</div>
+                  <div className="text-xs text-muted-foreground">11+ submitted orders</div>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -498,7 +456,9 @@ const SalesMapPage = () => {
                   <Badge
                     variant="secondary"
                     className={
-                      tooltip.state.status === 'light'
+                      tooltip.state.status === 'none'
+                        ? 'bg-gray-100 text-gray-800'
+                        : tooltip.state.status === 'light'
                         ? 'bg-green-100 text-green-800'
                         : tooltip.state.status === 'moderate'
                           ? 'bg-yellow-100 text-yellow-800'
