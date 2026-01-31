@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { isCenterUser } from '@/lib/userPermissions';
 import { Loader2, ShieldCheck, Zap, BarChart3, Lock, Eye, EyeOff } from 'lucide-react';
 
@@ -13,12 +14,62 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, user } = useAuth();
+  const { signIn, signOut, user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
+
+  const ensureAgentRoleOrSignOut = useCallback(async (userId: string): Promise<boolean> => {
+    const client = (await import('@/integrations/supabase/client')).supabase;
+    const untypedClient = client as unknown as {
+      from: (table: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            maybeSingle: () => Promise<{ data: { role?: string | null } | null; error: unknown }>;
+          };
+        };
+      };
+    };
+
+    const { data: appUser, error: appUserError } = await untypedClient
+      .from('app_users')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const roleFromAppUsers = appUserError ? null : (appUser?.role as string | null | undefined);
+    const hasAgentRoleInAppUsers = roleFromAppUsers === 'agent';
+
+    if (hasAgentRoleInAppUsers) {
+      return true;
+    }
+
+    const { data: userRole, error: userRoleError } = await client
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('role', 'agent')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (appUserError || userRoleError || !userRole) {
+      await signOut();
+      toast({
+        title: 'Access denied',
+        description: 'To login, please contact an admin!',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    return true;
+  }, [signOut, toast]);
 
   useEffect(() => {
     const checkUserRedirect = async () => {
       if (user) {
+        const canAccess = await ensureAgentRoleOrSignOut(user.id);
+        if (!canAccess) return;
         const isCenter = await isCenterUser(user.id);
         if (isCenter) {
           navigate('/center-lead-portal');
@@ -29,12 +80,21 @@ const Auth = () => {
     };
 
     checkUserRedirect();
-  }, [user, navigate]);
+  }, [user, navigate, ensureAgentRoleOrSignOut]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    await signIn(email, password);
+    const { error, user: signedInUser } = await signIn(email, password);
+    if (!error && signedInUser) {
+      const canAccess = await ensureAgentRoleOrSignOut(signedInUser.id);
+      if (canAccess) {
+        toast({
+          title: 'Welcome back!',
+          description: 'You have been signed in successfully.',
+        });
+      }
+    }
     setIsLoading(false);
   };
 

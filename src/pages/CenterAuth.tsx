@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { useCenterUser } from '@/hooks/useCenterUser';
 import { Loader2 } from 'lucide-react';
 
@@ -14,18 +15,23 @@ const CenterAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, user } = useAuth();
   const { isCenterUser, loading: centerLoading } = useCenterUser();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user && !centerLoading) {
       if (isCenterUser) {
+        toast({
+          title: 'Welcome back!',
+          description: 'You have been signed in successfully.',
+        });
         navigate('/center-lead-portal');
       } else {
         // If logged in but not a center user, redirect to regular auth
         navigate('/auth');
       }
     }
-  }, [user, isCenterUser, centerLoading, navigate]);
+  }, [user, isCenterUser, centerLoading, navigate, toast]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();

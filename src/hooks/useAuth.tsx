@@ -7,8 +7,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, displayName?: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: unknown; user: User | null; session: Session | null }>;
+  signUp: (email: string, password: string, displayName?: string) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
 }
 
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -80,14 +80,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           variant: "destructive",
         });
       }
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You have been signed in successfully.",
-      });
     }
     
-    return { error };
+    return { error, user: data?.user ?? null, session: data?.session ?? null };
   };
 
   const signUp = async (email: string, password: string, displayName?: string) => {

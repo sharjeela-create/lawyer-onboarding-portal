@@ -155,6 +155,7 @@ const AppShell = ({
 
   const navItems = useMemo<NavItem[]>(() => {
     const restricted = isRestrictedUser(user?.id);
+    const canAccessAgentPages = !isCenterUser && !restricted;
 
     // Keep nav aligned with existing access rules.
     const items: NavItem[] = [
@@ -162,71 +163,69 @@ const AppShell = ({
         label: 'Dashboard',
         to: '/manager-dashboard',
         icon: <LayoutDashboard className="h-4 w-4 text-current" />,
-        show: isAuthorizedUser && hasNavigationAccess && !restricted,
+        show: canAccessAgentPages,
       },
       {
         label: 'Leads',
         to: '/leads',
         icon: <Users className="h-4 w-4 text-current" />,
         end: true,
-        show: !isCenterUser && !restricted,
+        show: canAccessAgentPages,
       },
       {
         label: 'Daily Deal Flow',
         to: '/daily-deal-flow',
         icon: <Grid3X3 className="h-4 w-4 text-current" />,
-        show: (isAuthorizedUser && hasNavigationAccess) || restricted,
+        show: canAccessAgentPages || restricted,
       },
       {
         label: 'Sales Map',
         to: '/sales-map',
         icon: <Map className="h-4 w-4 text-current" />,
-        show: isAuthorizedUser && hasNavigationAccess && !restricted,
+        show: canAccessAgentPages,
       },
       {
         label: 'Order Fulfillment',
         to: '/order-fulfillment',
         icon: <Package className="h-4 w-4 text-current" />,
-        show: isAuthorizedUser && hasNavigationAccess && !restricted,
+        show: canAccessAgentPages,
       },
       {
         label: 'Transfer Portal',
         to: '/transfer-portal',
         icon: <Eye className="h-4 w-4 text-current" />,
-        show: isAuthorizedUser && hasNavigationAccess && !restricted,
+        show: canAccessAgentPages,
       },
       {
         label: 'Submission Portal',
         to: '/submission-portal',
         icon: <CheckCircle className="h-4 w-4 text-current" />,
-        show: isAuthorizedUser && hasNavigationAccess && !restricted,
+        show: canAccessAgentPages,
       },
       {
         label: 'Retainers',
         to: '/retainers',
         icon: <TbUserShield className="h-4 w-4 text-current" />,
         end: true,
-        show: !isCenterUser && !restricted,
+        show: canAccessAgentPages,
       },
-      /*
       {
         label: 'Agent Reports & Logs',
         to: '/reports',
         icon: <BarChart3 className="h-4 w-4 text-current" />,
-        show: isAuthorizedUser && hasNavigationAccess && !restricted,
+        show: canAccessAgentPages,
       },
       {
         label: 'Admin Analytics',
         to: '/admin-analytics/agents',
         icon: <BarChart3 className="h-4 w-4 text-current" />,
-        show: isBen && hasNavigationAccess && !restricted,
+        show: canAccessAgentPages,
       },
-      */
       {
         label: 'GHL Sync Portal',
         to: '/ghl-sync',
         icon: <Zap className="h-4 w-4 text-current" />,
-        show: isAuthorizedUser && hasNavigationAccess && !restricted,
+        show: canAccessAgentPages,
       },
     ];
 
