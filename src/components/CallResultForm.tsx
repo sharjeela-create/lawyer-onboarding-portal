@@ -1378,6 +1378,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
               "Qualified Missing Information": "Qualified: Missing Information",
               "Qualified Awaiting Police Report": "Qualified: Awaiting Police Report",
               "Qualified Awaiting to be signed": "Qualified: Awaiting to be Signed",
+              "Qualified Approved": "Qualified Approved"
             };
 
             const slackStatus = applicationSubmitted === true
@@ -1750,6 +1751,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                       <SelectItem value="Qualified Missing Information">Qualified Missing Information</SelectItem>
                       <SelectItem value="Qualified Awaiting Police Report">Qualified Awaiting Police Report</SelectItem>
                       <SelectItem value="Qualified Awaiting to be signed">Qualified Awaiting to be signed</SelectItem>
+                      <SelectItem value="Qualified Approved">Qualified Approved</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
