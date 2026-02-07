@@ -182,6 +182,28 @@ const OrderFulfillmentAssignPage = () => {
     return false;
   };
 
+  const ensureDealExists = async (submissionId: string) => {
+    const sid = String(submissionId || "").trim();
+    if (!sid) return false;
+
+    const { count, error: dealError } = await supabase
+      .from("daily_deal_flow")
+      .select("id", { count: "exact", head: true })
+      .eq("submission_id", sid);
+
+    if (dealError || !count) {
+      toast({
+        title: "Cannot assign yet",
+        description:
+          "This submission is not in Daily Deal Flow. Create a deal (Daily Deal Flow entry) first, then assign it to an order.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const refresh = useCallback(async () => {
     if (!orderId) return;
 
@@ -295,6 +317,10 @@ const OrderFulfillmentAssignPage = () => {
     if (!statusAllowed) return;
 
     const submissionId = row.submission_id ? String(row.submission_id) : "";
+
+    const hasDeal = await ensureDealExists(submissionId);
+    if (!hasDeal) return;
+
     const leadId = submissionId ? leadIdBySubmissionId[submissionId] : undefined;
 
     if (!leadId) {

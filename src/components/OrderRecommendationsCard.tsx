@@ -170,13 +170,15 @@ export const OrderRecommendationsCard = (props: {
   const ensureDealExists = async () => {
     if (!props.submissionId) return false;
 
-    const { data: dealRow, error: dealError } = await supabase
-      .from("daily_deal_flow")
-      .select("id")
-      .eq("submission_id", props.submissionId)
-      .maybeSingle();
+    const sid = String(props.submissionId || "").trim();
+    if (!sid) return false;
 
-    if (dealError || !dealRow) {
+    const { count, error: dealError } = await supabase
+      .from("daily_deal_flow")
+      .select("id", { count: "exact", head: true })
+      .eq("submission_id", sid);
+
+    if (dealError || !count) {
       toast({
         title: "Cannot assign yet",
         description:
