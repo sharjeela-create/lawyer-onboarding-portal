@@ -874,7 +874,7 @@ const SubmissionPortalPage = () => {
           console.warn('Unexpected error inserting lead note', e);
         }
       }
-      if (stageChanged) {
+      if (stageChanged || trimmedNote.length > 0) {
         try {
           const { error: slackError } = await supabase.functions.invoke('disposition-change-slack-alert', {
             body: {
@@ -886,6 +886,7 @@ const SubmissionPortalPage = () => {
               previousDisposition: editRow.status ?? null,
               newDisposition: nextStage,
               notes: notesText,
+              noteOnly: !stageChanged,
             },
           });
           if (slackError) {

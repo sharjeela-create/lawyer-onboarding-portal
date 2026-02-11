@@ -411,6 +411,32 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
         description: "Row updated successfully",
       });
 
+      // Send Slack notification only when notes were changed
+      const originalNotes = (row.notes || '').trim();
+      const updatedNotes = (finalEditData.notes || '').trim();
+      if (updatedNotes.length > 0 && updatedNotes !== originalNotes) {
+        try {
+          const { error: slackError } = await supabase.functions.invoke('disposition-change-slack-alert', {
+            body: {
+              leadId: row.id,
+              submissionId: row.submission_id ?? null,
+              leadVendor: row.lead_vendor ?? '',
+              insuredName: row.insured_name ?? null,
+              clientPhoneNumber: row.client_phone_number ?? null,
+              previousDisposition: row.status ?? null,
+              newDisposition: row.status ?? null,
+              notes: updatedNotes,
+              noteOnly: true,
+            },
+          });
+          if (slackError) {
+            console.warn('Slack alert invoke failed:', slackError);
+          }
+        } catch (e) {
+          console.warn('Slack alert invoke threw:', e);
+        }
+      }
+
       setIsEditing(false);
       setShowDetailsDialog(false);
       onUpdate();
@@ -424,7 +450,7 @@ export const EditableRow = ({ row, rowIndex, serialNumber, onUpdate, hasWritePer
     } finally {
       setIsSaving(false);
     }
-  }, [editData, onUpdate, row.id, row.status, toast]);
+  }, [editData, onUpdate, row.id, row.status, row.notes, row.submission_id, row.lead_vendor, row.insured_name, row.client_phone_number, toast]);
 
   const handleCancel = useCallback(() => {
     setEditData(row);

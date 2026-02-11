@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Info } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,10 @@ export const OrderRecommendationsCard = (props: {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Recommendation[]>([]);
 
+  // Daily deal flow eligibility check
+  const [dealFlowStatus, setDealFlowStatus] = useState<'loading' | 'not_found' | 'already_assigned' | 'eligible'>('loading');
+  const [assignedAttorneyName, setAssignedAttorneyName] = useState<string | null>(null);
+
   const attorneyById = useMemo(() => {
     const map = new Map<string, string>();
     for (const a of attorneys) {
@@ -93,6 +97,46 @@ export const OrderRecommendationsCard = (props: {
   useEffect(() => {
     setResolvedLeadId(props.leadId ?? null);
   }, [props.leadId]);
+
+  // Check daily_deal_flow for this submission on mount
+  useEffect(() => {
+    const checkDealFlow = async () => {
+      if (!props.submissionId) {
+        setDealFlowStatus('not_found');
+        return;
+      }
+
+      try {
+        const { data: dealRow, error: dealError } = await supabase
+          .from('daily_deal_flow')
+          .select('*')
+          .eq('submission_id', props.submissionId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (dealError || !dealRow) {
+          setDealFlowStatus('not_found');
+          return;
+        }
+
+        const row = dealRow as unknown as Record<string, unknown>;
+        const assignedId = row?.assigned_attorney_id as string | null;
+        if (assignedId && String(assignedId).trim()) {
+          setDealFlowStatus('already_assigned');
+          // Resolve attorney name
+          const label = attorneyById.get(assignedId);
+          setAssignedAttorneyName(label || assignedId);
+        } else {
+          setDealFlowStatus('eligible');
+        }
+      } catch {
+        setDealFlowStatus('not_found');
+      }
+    };
+
+    checkDealFlow();
+  }, [props.submissionId, attorneyById]);
 
   const fetchLeadIdIfNeeded = async () => {
     if (resolvedLeadId) return resolvedLeadId;
@@ -159,13 +203,15 @@ export const OrderRecommendationsCard = (props: {
   };
 
   useEffect(() => {
+    // Only fetch recommendations if the lead is eligible (exists in daily deal flow with no attorney assigned)
+    if (dealFlowStatus !== 'eligible') return;
     // Debounced auto-refresh when input changes
     const t = window.setTimeout(() => {
       void run();
     }, 600);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload]);
+  }, [payload, dealFlowStatus]);
 
   const ensureDealExists = async () => {
     if (!props.submissionId) return false;
@@ -269,7 +315,7 @@ export const OrderRecommendationsCard = (props: {
 
         <div className="flex items-center gap-2">
           {loadingLead ? <Badge variant="outline">Resolving lead…</Badge> : null}
-          <Button variant="outline" size="sm" onClick={() => void run()} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => void run()} disabled={loading || dealFlowStatus !== 'eligible'}>
             <RefreshCw className={loading ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
             Refresh
           </Button>
@@ -277,80 +323,97 @@ export const OrderRecommendationsCard = (props: {
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {error ? (
-          <div className="rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
-            Failed to load recommendations: {error}
-          </div>
-        ) : null}
-
-        {loading ? (
+        {dealFlowStatus === 'loading' ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading recommendations…
+            Checking Daily Deal Flow status…
           </div>
-        ) : null}
-
-        {!loading && data.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No matching open orders found.</div>
-        ) : null}
-
-        <div className="space-y-3">
-          {data.map((rec) => {
-            const attorneyLabel = attorneyById.get(rec.lawyer_id) || rec.lawyer_id;
-            const remaining = Number(rec.remaining) || Math.max(0, Number(rec.quota_total) - Number(rec.quota_filled));
-            const isAssigned = props.currentAssignedAttorneyId && props.currentAssignedAttorneyId === rec.lawyer_id;
-            return (
-              <div key={rec.order_id} className="rounded-lg border p-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="truncate font-medium">{attorneyLabel}</div>
-                      {isAssigned ? <Badge>Currently Assigned</Badge> : null}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="secondary">Score {Math.round(rec.score)}</Badge>
-                      <Badge variant="outline">{formatExpiry(rec.expires_at)}</Badge>
-                      <Badge variant="outline">
-                        {Number(rec.quota_filled)}/{Number(rec.quota_total)} filled
-                      </Badge>
-                      <Badge variant="outline">{remaining} remaining</Badge>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant="outline" className="font-mono">
-                      {rec.order_id.slice(0, 8)}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      onClick={() => void assign(rec)}
-                      disabled={assigningOrderId === rec.order_id}
-                    >
-                      {assigningOrderId === rec.order_id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Assigning…
-                        </>
-                      ) : (
-                        "Assign"
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {Array.isArray(rec.reasons) && rec.reasons.length ? (
-                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                    {rec.reasons.slice(0, 6).map((r, idx) => (
-                      <div key={`${rec.order_id}-reason-${idx}`} className="truncate">
-                        {r}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
+        ) : dealFlowStatus === 'not_found' ? (
+          <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-3 text-sm text-muted-foreground">
+            <Info className="h-4 w-4 shrink-0" />
+            This lead does not exist in Daily Deal Flow yet. Recommendations cannot be shown until a Daily Deal Flow entry is created.
+          </div>
+        ) : dealFlowStatus === 'already_assigned' ? (
+          <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-3 text-sm text-muted-foreground">
+            <Info className="h-4 w-4 shrink-0" />
+            This lead is already assigned to <strong className="text-foreground">{assignedAttorneyName}</strong>. Recommendations are not available for already-assigned leads.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {error ? (
+              <div className="rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
+                Failed to load recommendations: {error}
               </div>
-            );
-          })}
-        </div>
+            ) : null}
+
+            {loading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading recommendations…
+              </div>
+            ) : null}
+
+            {!loading && data.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No matching open orders found.</div>
+            ) : null}
+
+            {data.map((rec) => {
+              const attorneyLabel = attorneyById.get(rec.lawyer_id) || rec.lawyer_id;
+              const remaining = Number(rec.remaining) || Math.max(0, Number(rec.quota_total) - Number(rec.quota_filled));
+              const isAssigned = props.currentAssignedAttorneyId && props.currentAssignedAttorneyId === rec.lawyer_id;
+              return (
+                <div key={rec.order_id} className="rounded-lg border p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="truncate font-medium">{attorneyLabel}</div>
+                        {isAssigned ? <Badge>Currently Assigned</Badge> : null}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="secondary">Score {Math.round(rec.score)}</Badge>
+                        <Badge variant="outline">{formatExpiry(rec.expires_at)}</Badge>
+                        <Badge variant="outline">
+                          {Number(rec.quota_filled)}/{Number(rec.quota_total)} filled
+                        </Badge>
+                        <Badge variant="outline">{remaining} remaining</Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge variant="outline" className="font-mono">
+                        {rec.order_id.slice(0, 8)}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        onClick={() => void assign(rec)}
+                        disabled={assigningOrderId === rec.order_id}
+                      >
+                        {assigningOrderId === rec.order_id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Assigning…
+                          </>
+                        ) : (
+                          "Assign"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {Array.isArray(rec.reasons) && rec.reasons.length ? (
+                    <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      {rec.reasons.slice(0, 6).map((r, idx) => (
+                        <div key={`${rec.order_id}-reason-${idx}`} className="truncate">
+                          {r}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

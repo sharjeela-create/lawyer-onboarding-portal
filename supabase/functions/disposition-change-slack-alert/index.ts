@@ -16,10 +16,11 @@ type Payload = {
   leadVendor: string;
   insuredName?: string | null;
   clientPhoneNumber?: string | null;
-  newDisposition: string;
+  newDisposition?: string | null;
   previousDisposition?: string | null;
   notes: string;
   updatedBy?: string | null;
+  noteOnly?: boolean;
 };
 
 function normalizeSlackChannel(value: string | null | undefined): string | null {
@@ -30,13 +31,14 @@ function normalizeSlackChannel(value: string | null | undefined): string | null 
 }
 
 async function postToSlack(channel: string, message: unknown) {
+  const messageObj = (message ?? {}) as Record<string, unknown>;
   const resp = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${SLACK_BOT_TOKEN}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ channel, ...message }),
+    body: JSON.stringify({ channel, ...messageObj }),
   });
   const result = await resp.json();
   return { ok: !!result?.ok, error: result?.error, raw: result };
@@ -77,7 +79,7 @@ serve(async (req) => {
 
     if (!payload.leadVendor?.trim()) throw new Error("leadVendor is required");
     if (!payload.leadId?.trim()) throw new Error("leadId is required");
-    if (!payload.newDisposition?.trim()) throw new Error("newDisposition is required");
+    const isNoteOnly = payload.noteOnly === true || !payload.newDisposition?.trim();
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
@@ -104,21 +106,29 @@ serve(async (req) => {
     const previousDisposition = (payload.previousDisposition ?? "").trim() || "Unknown";
     const newDisposition = (payload.newDisposition ?? "").trim();
 
+    const headerText = isNoteOnly
+      ? `📝 Note Added — ${newDisposition || previousDisposition}`
+      : `📝 Disposition Updated: ${previousDisposition} -> ${newDisposition}`;
+
+    const sectionFields = [
+      { type: "mrkdwn", text: `*Customer:*\n${insuredName}` },
+      { type: "mrkdwn", text: `*Phone:*\n${phone}` },
+      { type: "mrkdwn", text: `*Vendor:*\n${payload.leadVendor}` },
+      ...(isNoteOnly
+        ? [{ type: "mrkdwn", text: `*Current Disposition:*\n${newDisposition || previousDisposition}` }]
+        : [{ type: "mrkdwn", text: `*New Disposition:*\n${newDisposition}` }]),
+      ...(updatedBy ? [{ type: "mrkdwn", text: `*Updated By:*\n${updatedBy}` }] : []),
+    ];
+
     const slackMessage = {
       blocks: [
         {
           type: "header",
-          text: { type: "plain_text", text: `📝 Disposition Changed: ${previousDisposition} -> ${newDisposition}` },
+          text: { type: "plain_text", text: headerText },
         },
         {
           type: "section",
-          fields: [
-            { type: "mrkdwn", text: `*Customer:*\n${insuredName}` },
-            { type: "mrkdwn", text: `*Phone:*\n${phone}` },
-            { type: "mrkdwn", text: `*Vendor:*\n${payload.leadVendor}` },
-            { type: "mrkdwn", text: `*New Disposition:*\n${newDisposition}` },
-            ...(updatedBy ? [{ type: "mrkdwn", text: `*Updated By:*\n${updatedBy}` }] : []),
-          ],
+          fields: sectionFields,
         },
         { type: "divider" },
         {

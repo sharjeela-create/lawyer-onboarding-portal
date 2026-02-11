@@ -435,6 +435,7 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
   const [closersLoading, setClosersLoading] = useState(false);
   const [returnDidOpen, setReturnDidOpen] = useState(false);
   const [qualifiedStage, setQualifiedStage] = useState("");
+  const [qualifiedStageReason, setQualifiedStageReason] = useState("");
   
   const { toast } = useToast();
   const { centers, leadVendors, loading: centersLoading } = useCenters();
@@ -650,6 +651,8 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
     const loadExistingCallResult = async () => {
       if (!submissionId) return;
 
+      let notesLoadedFromCallResult = false;
+
       try {
         const { data: existingResult, error } = await supabase
           .from('call_results')
@@ -665,6 +668,9 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
           setApplicationSubmitted(Boolean(existingResult.application_submitted));
           setStatus(existingResult.status || '');
           setNotes(existingResult.notes || '');
+          if ((existingResult.notes || '').trim()) {
+            notesLoadedFromCallResult = true;
+          }
           setBufferAgent(existingResult.buffer_agent || '');
           setAgentWhoTookCall(existingResult.agent_who_took_call || '');
           setCallSource(existingResult.call_source || '');
@@ -689,6 +695,20 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
           // Set status reason if it exists
           if (existingResult.dq_reason) {
             setStatusReason(existingResult.dq_reason);
+          }
+          
+          // Restore qualified stage and reason from saved status
+          if (existingResult.application_submitted) {
+            const savedStatus = existingResult.status || '';
+            if (savedStatus.startsWith('Qualified Missing Information - ')) {
+              setQualifiedStage('Qualified Missing Information');
+              setQualifiedStageReason(savedStatus.replace('Qualified Missing Information - ', ''));
+            } else if (savedStatus === 'Qualified Missing Information' || savedStatus === 'Qualified Awaiting to be signed' || savedStatus === 'Qualified Approved' || savedStatus === 'Qualified/Payable') {
+              setQualifiedStage(savedStatus);
+              if (savedStatus === 'Qualified Missing Information' && existingResult.dq_reason) {
+                setQualifiedStageReason(existingResult.dq_reason);
+              }
+            }
           }
           
           // Set new draft date if it exists
@@ -918,6 +938,26 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
           console.log('Could not fetch lead_vendor from leads table for new entry:', leadError);
         }
       }
+
+      // Always try to fetch notes from daily_deal_flow for this submission
+      // For qualified leads, call_results notes contain auto-generated structured notes,
+      // so daily_deal_flow notes are the real agent notes that should be shown
+      try {
+        const { data: dealFlowData, error: dealFlowError } = await supabase
+          .from('daily_deal_flow')
+          .select('notes')
+          .eq('submission_id', submissionId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (dealFlowData && !dealFlowError && (dealFlowData.notes || '').trim()) {
+          console.log('Pre-populating notes from daily_deal_flow:', dealFlowData.notes);
+          setNotes(dealFlowData.notes);
+        }
+      } catch (ddfError) {
+        console.log('Could not fetch notes from daily_deal_flow:', ddfError);
+      }
     };
 
     loadExistingCallResult();
@@ -1125,6 +1165,9 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
       let finalStatus = status;
       if (applicationSubmitted === true) {
         finalStatus = qualifiedStage || "Submitted";
+        if (qualifiedStage === "Qualified Missing Information" && qualifiedStageReason) {
+          finalStatus = `${qualifiedStage} - ${qualifiedStageReason}`;
+        }
       }
 
       // Map status for sheet value
@@ -1159,7 +1202,9 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
         application_submitted: applicationSubmitted,
         status: finalStatus,
         notes: finalNotes,
-        dq_reason: showStatusReasonDropdown ? statusReason : null,
+        dq_reason: applicationSubmitted === true && qualifiedStage === "Qualified Missing Information" && qualifiedStageReason
+          ? qualifiedStageReason
+          : (showStatusReasonDropdown ? statusReason : null),
         buffer_agent: bufferAgent,
         agent_who_took_call: agentWhoTookCall,
         new_draft_date: status === "Updated Banking/draft date" && newDraftDate ? format(newDraftDate, "yyyy-MM-dd") : null,
@@ -1375,10 +1420,10 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
 
           if (!leadError && leadData) {
             const qualifiedStatusMap: Record<string, string> = {
-              "Qualified Missing Information": "Qualified: Missing Information",
-              "Qualified Awaiting Police Report": "Qualified: Awaiting Police Report",
+              "Qualified Missing Information": qualifiedStageReason ? `Qualified: Missing Information - ${qualifiedStageReason}` : "Qualified: Missing Information",
               "Qualified Awaiting to be signed": "Qualified: Awaiting to be Signed",
-              "Qualified Approved": "Qualified Approved"
+              "Qualified Approved": "Qualified Approved",
+              "Qualified/Payable": "Qualified/Payable"
             };
 
             const slackStatus = applicationSubmitted === true
@@ -1743,18 +1788,37 @@ export const CallResultForm = ({ submissionId, customerName, onSuccess, initialA
                   <Label htmlFor="qualifiedStage" className="text-base font-semibold">
                     Status / Stage
                   </Label>
-                  <Select value={qualifiedStage} onValueChange={setQualifiedStage}>
+                  <Select value={qualifiedStage} onValueChange={(val) => { setQualifiedStage(val); setQualifiedStageReason(""); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select stage" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Qualified Missing Information">Qualified Missing Information</SelectItem>
-                      <SelectItem value="Qualified Awaiting Police Report">Qualified Awaiting Police Report</SelectItem>
                       <SelectItem value="Qualified Awaiting to be signed">Qualified Awaiting to be signed</SelectItem>
                       <SelectItem value="Qualified Approved">Qualified Approved</SelectItem>
+                      <SelectItem value="Qualified/Payable">Qualified/Payable</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {qualifiedStage === "Qualified Missing Information" && (
+                  <div>
+                    <Label htmlFor="qualifiedStageReason" className="text-base font-semibold">
+                      Reason
+                    </Label>
+                    <Select value={qualifiedStageReason} onValueChange={setQualifiedStageReason}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select reason" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Missing Police Report">Missing Police Report</SelectItem>
+                        <SelectItem value="Medical Report">Medical Report</SelectItem>
+                        <SelectItem value="Insurance Documents">Insurance Documents</SelectItem>
+                        <SelectItem value="Awaiting Report">Awaiting Report</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             <div className="space-y-4 p-4 border rounded-lg bg-green-50">
               <h3 className="font-semibold text-green-800">Application Submitted Details</h3>
