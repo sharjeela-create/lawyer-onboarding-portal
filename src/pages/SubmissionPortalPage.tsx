@@ -38,6 +38,8 @@ const kanbanStages = [
   { key: "stage_6", label: "Retainer Signed Pending" },
   { key: "stage_7", label: "Retainer Signed" },
   { key: "stage_8", label: "Attorney Decision" },
+  { key: "stage_12", label: "Retainer Signed – Payable" },
+  { key: "stage_13", label: "Retainer Paid" },
 ] as const;
 
 type StageKey = (typeof kanbanStages)[number]["key"];
@@ -54,6 +56,8 @@ const stageSlugMap: Record<string, StageKey> = {
   stage_9_pending_signature: "stage_9",
   stage_10_pending_police_report: "stage_10",
   stage_11_signed_police_report_pending: "stage_11",
+  stage_12_retainer_signed_payable: "stage_12",
+  stage_13_retainer_paid: "stage_13",
   information_verification: "stage_1",
   attorney_submission: "stage_2",
   insurance_verification: "stage_3",
@@ -65,6 +69,8 @@ const stageSlugMap: Record<string, StageKey> = {
   pending_signature: "stage_9",
   pending_police_report: "stage_10",
   signed_police_report_pending: "stage_11",
+  retainer_signed_payable: "stage_12",
+  retainer_paid: "stage_13",
 };
 
 const deriveStageKey = (row: SubmissionPortalRow): StageKey => {
@@ -124,6 +130,14 @@ const stageTheme: Record<StageKey, { column: string; header: string }> = {
   stage_11: {
     column: "border-t-4 border-indigo-500/50 bg-indigo-50/50 dark:bg-indigo-950/15",
     header: "bg-indigo-50/60 dark:bg-indigo-950/10",
+  },
+  stage_12: {
+    column: "border-t-4 border-teal-500/50 bg-teal-50/50 dark:bg-teal-950/15",
+    header: "bg-teal-50/60 dark:bg-teal-950/10",
+  },
+  stage_13: {
+    column: "border-t-4 border-fuchsia-500/50 bg-fuchsia-50/50 dark:bg-fuchsia-950/15",
+    header: "bg-fuchsia-50/60 dark:bg-fuchsia-950/10",
   },
 };
 
