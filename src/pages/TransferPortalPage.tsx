@@ -78,13 +78,40 @@ const TransferPortalPage = () => {
   }, [dbSubmissionStages]);
 
   const allStageOptions = useMemo(() => {
-    return [...kanbanStages.map((s) => s.label), ...submissionPortalStageLabels];
+    return Array.from(
+      new Set(
+        [...kanbanStages.map((s) => s.label), ...submissionPortalStageLabels]
+          .map((label) => label.trim())
+          .filter(Boolean)
+      )
+    );
   }, [kanbanStages, submissionPortalStageLabels]);
 
   const deriveStageKey = (row: TransferPortalRow): string => {
     const status = (row.status || '').trim();
     const exact = kanbanStages.find((s) => s.label === status);
     return exact?.key ?? kanbanStages[0]?.key ?? 'transfer_api';
+  };
+
+  const handleKanbanDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggingId) return;
+
+    const container = e.currentTarget;
+    const rect = container.getBoundingClientRect();
+    const edgeThreshold = 96;
+    const maxStep = 24;
+    const pointerX = e.clientX - rect.left;
+
+    if (pointerX < edgeThreshold) {
+      const intensity = (edgeThreshold - pointerX) / edgeThreshold;
+      container.scrollLeft -= Math.ceil(maxStep * intensity);
+      return;
+    }
+
+    if (pointerX > rect.width - edgeThreshold) {
+      const intensity = (pointerX - (rect.width - edgeThreshold)) / edgeThreshold;
+      container.scrollLeft += Math.ceil(maxStep * intensity);
+    }
   };
 
   const [data, setData] = useState<TransferPortalRow[]>([]);
@@ -309,7 +336,7 @@ const TransferPortalPage = () => {
     const query = (editStage || '').trim().toLowerCase();
     if (!query) return allStageOptions;
     return allStageOptions.filter((label) => label.toLowerCase().includes(query));
-  }, [editStage]);
+  }, [allStageOptions, editStage]);
 
   const handleSaveEdit = async () => {
     if (!editRow) return;
@@ -836,7 +863,7 @@ const TransferPortalPage = () => {
           </Card>
 
           {viewMode === "kanban" ? (
-            <div className="mt-4 min-h-0 flex-1 overflow-auto">
+            <div className="mt-4 min-h-0 flex-1 overflow-auto" onDragOver={handleKanbanDragOver}>
               <div className="flex min-h-0 min-w-[2200px] gap-3 pr-2">
                 {kanbanStages.map((stage) => {
                   const rows = leadsByStage.get(stage.key) || [];

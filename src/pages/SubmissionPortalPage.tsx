@@ -96,6 +96,27 @@ const SubmissionPortalPage = () => {
     return exact?.key ?? kanbanStages[0]?.key ?? 'pending_signature';
   };
 
+  const handleKanbanDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggingId) return;
+
+    const container = e.currentTarget;
+    const rect = container.getBoundingClientRect();
+    const edgeThreshold = 96;
+    const maxStep = 24;
+    const pointerX = e.clientX - rect.left;
+
+    if (pointerX < edgeThreshold) {
+      const intensity = (edgeThreshold - pointerX) / edgeThreshold;
+      container.scrollLeft -= Math.ceil(maxStep * intensity);
+      return;
+    }
+
+    if (pointerX > rect.width - edgeThreshold) {
+      const intensity = (pointerX - (rect.width - edgeThreshold)) / edgeThreshold;
+      container.scrollLeft += Math.ceil(maxStep * intensity);
+    }
+  };
+
   const getStatusForStage = (stageKey: string) => {
     const found = kanbanStages.find((s) => s.key === stageKey);
     if (!found) return "Pending Approval";
@@ -703,7 +724,7 @@ const SubmissionPortalPage = () => {
 
   const getStageDisplayLabel = (label: string) => label.replace(/^Stage\s+\d+\s*:\s*/i, "");
 
-  const allStageOptions = useMemo(() => buildAllowedStatuses(), []);
+  const allStageOptions = useMemo(() => buildAllowedStatuses(), [kanbanStages]);
 
   const editStageMatches = useMemo(() => {
     const query = (editStage || '').trim().toLowerCase();
@@ -934,7 +955,7 @@ const SubmissionPortalPage = () => {
             </div>
           </div>
 
-          <div className="mt-4 min-h-0 flex-1 overflow-auto">
+          <div className="mt-4 min-h-0 flex-1 overflow-auto" onDragOver={handleKanbanDragOver}>
             <div className="p-4">
               <div
                 className="flex min-h-0 gap-3 pr-2"
