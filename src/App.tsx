@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { AgentActivityDashboard } from "@/components/AgentActivityDashboard";
 import ReportsPage from "./pages/Reports";
@@ -37,13 +37,19 @@ import LicensedAgentInbox from "./pages/LicensedAgentInbox";
 import TaskDetailView from "./pages/TaskDetailView";
 import RetentionTasksView from "./pages/RetentionTasksView";
 import AdminAnalytics from "./pages/AdminAnalytics";
-import { AgentsPage, VendorsPage, DailyPage, CarriersPage } from "./pages/AdminAnalytics/pages";
-import NotFound from "./pages/NotFound";
 import UserManagement from "./pages/UserManagement";
 import AppShell from "@/components/layout/AppShell";
 import { Navigate } from "react-router-dom";
 
 const queryClient = new QueryClient();
+
+const AuthAwareFallbackRoute = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) return null;
+
+  return <Navigate to={user ? "/leads" : "/auth"} replace />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -266,7 +272,16 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route path="/reports" element={<NotFound />} />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Agent Reports & Logs">
+                    <ReportsPage />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
             <Route 
               path="/bulk-lookup" 
               element={
@@ -377,9 +392,18 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route path="/admin-analytics/*" element={<NotFound />} />
+            <Route
+              path="/admin-analytics/*"
+              element={
+                <ProtectedRoute>
+                  <AppShell title="Admin Analytics">
+                    <AdminAnalytics />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<AuthAwareFallbackRoute />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
